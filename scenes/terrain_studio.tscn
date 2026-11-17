@@ -6,13 +6,18 @@
 
 [sub_resource type="FastNoiseLite" id="FastNoiseLite_tdfat"]
 seed = 1234
-frequency = 0.005
+frequency = 0.0034
 fractal_octaves = 3
+fractal_lacunarity = 2.105
+fractal_gain = -0.605
+fractal_weighted_strength = 1.0
 
 [sub_resource type="FastNoiseLite" id="FastNoiseLite_acint"]
 seed = 5678
-frequency = 0.008
+frequency = 0.0047
 fractal_octaves = 3
+fractal_lacunarity = -0.22
+fractal_gain = 0.55
 
 [sub_resource type="FastNoiseLite" id="FastNoiseLite_6g125"]
 seed = 5678
@@ -48,7 +53,7 @@ seamless = true
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_dps0j"]
 shader = ExtResource("3_tdfat")
 shader_parameter/color_mode = 0
-shader_parameter/patch_zoom = 1.0
+shader_parameter/patch_zoom = 0.6
 shader_parameter/base_color = Color(0.22745098, 0.49019608, 0.26666668, 1)
 shader_parameter/enable_dark_patch = true
 shader_parameter/dark_patch_color = Color(0.12941177, 0.30588236, 0.16862746, 1)
@@ -96,6 +101,7 @@ color = Color(0.07, 0.08, 0.1, 1)
 
 [node name="GrassTerrain" type="Node" parent="TerrainTypes" unique_id=1165023469]
 script = ExtResource("2_6g125")
+patch_zoom = 0.6
 dark_patch_threshold = 0.51
 dark_patch_noise = SubResource("FastNoiseLite_tdfat")
 light_patch_threshold = 0.68
