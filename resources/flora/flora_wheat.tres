@@ -1,0 +1,47 @@
+[gd_resource type="Resource" script_class="FloraSpeciesPreset" format=3 uid="uid://c3x78ea1k2p4m"]
+
+[ext_resource type="Texture2D" uid="uid://ciolc1jdpyqu7" path="res://resources/vegetation/Wheat/wheat_atlas.png" id="1_atlas"]
+[ext_resource type="Script" uid="uid://ca2i212kdlxii" path="res://script/flora/flora_stage_config.gd" id="2_stage"]
+[ext_resource type="Script" uid="uid://cp6dk41p4d76c" path="res://script/flora/flora_species_preset.gd" id="3_preset"]
+
+[sub_resource type="Resource" id="Resource_stage0"]
+script = ExtResource("2_stage")
+valid_columns = 4
+
+[sub_resource type="Resource" id="Resource_stage1"]
+script = ExtResource("2_stage")
+valid_columns = 4
+required_sunlight = 20.0
+
+[sub_resource type="Resource" id="Resource_stage2"]
+script = ExtResource("2_stage")
+valid_columns = 4
+required_sunlight = 30.0
+highlight_strength = 1.05
+
+[sub_resource type="Resource" id="Resource_stage3"]
+script = ExtResource("2_stage")
+valid_columns = 4
+required_sunlight = 40.0
+highlight_strength = 1.1
+shadow_strength = 1.05
+
+[sub_resource type="Resource" id="Resource_stage4"]
+script = ExtResource("2_stage")
+valid_columns = 4
+required_sunlight = 0.0
+stop_growth = true
+highlight_strength = 1.15
+shadow_strength = 1.1
+tint_color = Color(1, 0.98, 0.9, 1)
+
+[resource]
+script = ExtResource("3_preset")
+species_name = "小麦"
+jitter_offset_x = 3
+jitter_offset_y = 2
+atlas_texture = ExtResource("1_atlas")
+atlas_hframes = 4
+atlas_vframes = 5
+stage_count = 5
+stages = Array[ExtResource("2_stage")]([SubResource("Resource_stage0"), SubResource("Resource_stage1"), SubResource("Resource_stage2"), SubResource("Resource_stage3"), SubResource("Resource_stage4")])

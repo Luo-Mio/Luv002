@@ -1,73 +1,51 @@
-[gd_scene format=3]
+[gd_scene format=3 uid="uid://2tgmfcnsjdc"]
 
-[ext_resource type="Script" path="res://scripts/time_system.gd" id="1_tipki"]
-[ext_resource type="Script" path="res://scripts/test_player.gd" id="2_85g3d"]
-[ext_resource type="Script" path="res://scripts/chunk_system.gd" id="3_choun"]
-[ext_resource type="Script" path="res://scripts/terrain/terrain_manager.gd" id="4_ya4ey"]
-[ext_resource type="Script" path="res://scripts/terrain/terrain_chunk_renderer.gd" id="5_eb6dy"]
-[ext_resource type="Script" path="res://scripts/camera_controller.gd" id="6_trceg"]
-[ext_resource type="PackedScene" path="res://scenes/ui/hud.tscn" id="7_a8y0u"]
-[ext_resource type="Script" path="res://scripts/hud_controller.gd" id="8_jkv2x"]
+[ext_resource type="Script" uid="uid://bt0bwxdtg6s56" path="res://scripts/time_system.gd" id="1_85g3d"]
+[ext_resource type="PackedScene" uid="uid://b8rr80rigxah1" path="res://scenes/main_chara.tscn" id="2_o6xl0"]
+[ext_resource type="Script" uid="uid://di63j1emao4v0" path="res://scripts/chunk_system.gd" id="4_eb6dy"]
+[ext_resource type="Script" uid="uid://c3n4sb0abu1my" path="res://scripts/terrain/terrain_manager.gd" id="5_trceg"]
+[ext_resource type="Script" uid="uid://wkhxdo5ex7gr" path="res://scripts/terrain/terrain_chunk_renderer.gd" id="6_a8y0u"]
+[ext_resource type="Script" uid="uid://dwurncbtr1j3j" path="res://scripts/camera_controller.gd" id="7_jkv2x"]
+[ext_resource type="PackedScene" path="res://scenes/ui/hud.tscn" id="8_jbj1t"]
 
-[sub_resource type="Environment" id="Environment_jbj1t"]
+[sub_resource type="Environment" id="Environment_dp3eg"]
 background_mode = 1
 background_color = Color(0.08, 0.1, 0.12, 1)
 ambient_light_source = 2
 ambient_light_color = Color(0.8, 0.82, 0.85, 1)
 
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_muem4"]
-albedo_color = Color(0.2, 0.65, 1, 1)
+[node name="Main" type="Node3D" unique_id=1581304546]
 
-[sub_resource type="CapsuleMesh" id="CapsuleMesh_dp3eg"]
-material = SubResource("StandardMaterial3D_muem4")
-radius = 8.0
-height = 28.0
+[node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=1094365359]
+environment = SubResource("Environment_dp3eg")
 
-[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_0ld40"]
-radius = 8.0
-height = 28.0
-
-[node name="Main" type="Node3D" unique_id=1991453146]
-
-[node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=752658825]
-environment = SubResource("Environment_jbj1t")
-
-[node name="SunLight" type="DirectionalLight3D" parent="." unique_id=2096953176]
+[node name="SunLight" type="DirectionalLight3D" parent="." unique_id=181414161]
 transform = Transform3D(0.8660254, -0.35355338, 0.35355338, 0, 0.70710677, 0.70710677, -0.5, -0.6123724, 0.6123724, 0, 0, 0)
 light_energy = 1.1
 shadow_enabled = true
 
-[node name="TimeSystem" type="Node" parent="." unique_id=920985347]
-script = ExtResource("1_tipki")
+[node name="TimeSystem" type="Node" parent="." unique_id=1085791900]
+script = ExtResource("1_85g3d")
 
-[node name="Player" type="CharacterBody3D" parent="." unique_id=213916092]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 14, 0)
-script = ExtResource("2_85g3d")
+[node name="Player" parent="." unique_id=1161949150 instance=ExtResource("2_o6xl0")]
 
-[node name="MeshInstance3D" type="MeshInstance3D" parent="Player" unique_id=751647649]
-mesh = SubResource("CapsuleMesh_dp3eg")
-
-[node name="CollisionShape3D" type="CollisionShape3D" parent="Player" unique_id=1017224842]
-shape = SubResource("CapsuleShape3D_0ld40")
-
-[node name="ChunkSystem" type="Node" parent="." unique_id=1214827639 node_paths=PackedStringArray("target_node", "time_system")]
-script = ExtResource("3_choun")
+[node name="ChunkSystem" type="Node" parent="." unique_id=2099755396 node_paths=PackedStringArray("target_node", "time_system")]
+script = ExtResource("4_eb6dy")
 target_node = NodePath("../Player")
 time_system = NodePath("../TimeSystem")
 
-[node name="TerrainManager" type="Node" parent="." unique_id=1665305715]
-script = ExtResource("4_ya4ey")
+[node name="TerrainManager" type="Node" parent="." unique_id=1377792266]
+script = ExtResource("5_trceg")
 
-[node name="TerrainChunkRenderer" type="Node3D" parent="." unique_id=1793039358 node_paths=PackedStringArray("terrain_manager", "chunk_system")]
-script = ExtResource("5_eb6dy")
+[node name="TerrainChunkRenderer" type="Node3D" parent="." unique_id=627090285 node_paths=PackedStringArray("terrain_manager", "chunk_system")]
+script = ExtResource("6_a8y0u")
 terrain_manager = NodePath("../TerrainManager")
 chunk_system = NodePath("../ChunkSystem")
 
-[node name="IsometricCamera" type="Camera3D" parent="." unique_id=1770898500 node_paths=PackedStringArray("target")]
-script = ExtResource("6_trceg")
+[node name="IsometricCamera" type="Camera3D" parent="." unique_id=1256138220 node_paths=PackedStringArray("target")]
+script = ExtResource("7_jkv2x")
 target = NodePath("../Player")
 
-[node name="HUD" type="CanvasLayer" parent="." unique_id=1192896379 node_paths=PackedStringArray("time_system", "chunk_system") instance=ExtResource("7_a8y0u")]
-script = ExtResource("8_jkv2x")
+[node name="HUD" parent="." unique_id=1613131533 node_paths=PackedStringArray("time_system", "chunk_system") instance=ExtResource("8_jbj1t")]
 time_system = NodePath("../TimeSystem")
 chunk_system = NodePath("../ChunkSystem")

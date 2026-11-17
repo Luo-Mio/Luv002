@@ -23,6 +23,9 @@ func _ready() -> void:
 
 	rotation_degrees = Vector3(PITCH_DEG, YAW_DEG, 0.0)
 
+	if target == null:
+		target = get_tree().get_first_node_in_group("player")
+
 	if target != null:
 		global_position = _calculate_desired_position()
 

@@ -1,0 +1,92 @@
+[gd_resource type="Resource" script_class="TurfPreset" format=3 uid="uid://v6qj68wdu4tq"]
+
+[ext_resource type="Script" uid="uid://bkh50plvm8t6v" path="res://script/turf/turf_preset.gd" id="1_preset"]
+[ext_resource type="Script" uid="uid://d0g2r2gvnx4d8" path="res://script/turf/turf_weed_layer.gd" id="3_layer"]
+[ext_resource type="Texture2D" uid="uid://brtjnxavl1bbh" path="res://resources/surface/textre/Grass/Grass0.png" id="4_g0"]
+[ext_resource type="Texture2D" uid="uid://c3ibvsu56vkrx" path="res://resources/surface/textre/Grass/Grass1.png" id="5_g1"]
+[ext_resource type="Texture2D" uid="uid://cvdpe5s5vjbmu" path="res://resources/surface/textre/Grass/Grass2.png" id="6_g2"]
+[ext_resource type="Texture2D" uid="uid://dc3r12astlr7y" path="res://resources/surface/textre/Grass/Grass3.png" id="7_g3"]
+[ext_resource type="Texture2D" uid="uid://bkmmv8fcfqvsi" path="res://resources/surface/textre/Grass/Grass4.png" id="8_g4"]
+
+[sub_resource type="FastNoiseLite" id="FastNoiseLite_bright"]
+noise_type = 4
+seed = 1001
+frequency = 0.0055
+fractal_type = 2
+fractal_octaves = 4
+fractal_lacunarity = 3.5
+fractal_gain = 0.8
+
+[sub_resource type="FastNoiseLite" id="FastNoiseLite_hue"]
+seed = 2002
+frequency = 0.0118
+fractal_type = 3
+fractal_octaves = 2
+fractal_lacunarity = 6.0
+fractal_ping_pong_strength = 1.0
+
+[sub_resource type="Resource" id="Resource_l6i18"]
+script = ExtResource("3_layer")
+weed_sprite_sheet = ExtResource("4_g0")
+weed_hframes = 16
+weed_vframes = 2
+weed_frame_count = 32
+weed_count_per_chunk = 30000
+weed_brightness = 0.8
+
+[sub_resource type="Resource" id="Resource_sb7u2"]
+script = ExtResource("3_layer")
+weed_sprite_sheet = ExtResource("5_g1")
+weed_hframes = 16
+weed_vframes = 2
+weed_frame_count = 32
+weed_count_per_chunk = 10000
+weed_brightness = 0.86
+weed_seed = 202
+
+[sub_resource type="Resource" id="Resource_iydlq"]
+script = ExtResource("3_layer")
+weed_sprite_sheet = ExtResource("6_g2")
+weed_hframes = 16
+weed_vframes = 2
+weed_frame_count = 32
+weed_count_per_chunk = 4000
+weed_brightness = 0.9
+weed_seed = 303
+
+[sub_resource type="Resource" id="Resource_b7p8j"]
+script = ExtResource("3_layer")
+weed_sprite_sheet = ExtResource("8_g4")
+weed_hframes = 16
+weed_vframes = 2
+weed_count_per_chunk = 1000
+weed_brightness = 0.86
+weed_seed = 404
+
+[sub_resource type="Resource" id="Resource_mqfaw"]
+script = ExtResource("3_layer")
+weed_sprite_sheet = ExtResource("7_g3")
+weed_hframes = 16
+weed_vframes = 2
+weed_count_per_chunk = 2400
+weed_brightness = 0.8
+weed_seed = 505
+
+[resource]
+script = ExtResource("1_preset")
+reference_color = Color(0.44313726, 0.4392157, 0.3137255, 1)
+brightness_noise = SubResource("FastNoiseLite_bright")
+brightness_min = 0.3
+brightness_max = 0.6
+brightness_noise_size = 10.0
+brightness_overlay_weight = 0.5
+hue_noise = SubResource("FastNoiseLite_hue")
+hue_shift_left_deg = 10.0
+hue_shift_right_deg = 20.0
+hue_noise_size = 16.0
+weed_follow_turf = 1.25
+weed_layer_0 = SubResource("Resource_l6i18")
+weed_layer_1 = SubResource("Resource_sb7u2")
+weed_layer_2 = SubResource("Resource_iydlq")
+weed_layer_3 = SubResource("Resource_b7p8j")
+weed_layer_4 = SubResource("Resource_mqfaw")
