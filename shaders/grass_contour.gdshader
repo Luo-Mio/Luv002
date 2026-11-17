@@ -4,6 +4,11 @@ shader_type canvas_item;
 uniform int color_mode : hint_range(0, 1) = 0;
 
 // =========================================================
+// 图案等比缩放 (保持现有噪波图案形状，整体纯粹放大或缩小)
+// =========================================================
+uniform float patch_zoom : hint_range(0.1, 5.0) = 1.0; // 1.0 为原大小，>1.0 放大，<1.0 缩小
+
+// =========================================================
 // 模式 0 专属: 大底色 + 阈值斑块遮罩 (Base + Patch Masks)
 // =========================================================
 uniform vec4 base_color : source_color = vec4(0.24, 0.52, 0.22, 1.0); // 丰茂主草色 (占 ~75% 面积)
@@ -27,10 +32,6 @@ uniform bool enable_warp = true;
 uniform float warp_strength : hint_range(0.0, 100.0) = 25.0;
 uniform float irrational_rot : hint_range(0.0, 6.28318) = 2.399963; // 黄金角 ~137.5°
 uniform sampler2D warp_noise_tex : filter_linear, repeat_enable;
-
-// 微观像素颗粒感 (Micro Grain - 增强像素手绘质感)
-uniform bool enable_micro_grain = true;
-uniform float grain_strength : hint_range(0.0, 0.2) = 0.04;
 
 // =========================================================
 // 模式 1 兼容: 等高阶梯模式参数 (Contour Bands)
@@ -68,6 +69,9 @@ void fragment() {
 		warped_coord += vec2(wx, wy) * warp_strength;
 	}
 
+	// 2. 图案整体等比缩放 (坐标除以 zoom，纯粹放大/缩小现有图案，形状保持 100% 相同)
+	vec2 sample_coord = warped_coord / (512.0 * max(patch_zoom, 0.001));
+
 	vec4 final_color = base_color;
 
 	if (color_mode == 0) {
@@ -78,7 +82,7 @@ void fragment() {
 
 		// 采样深色斑块遮罩
 		if (enable_dark_patch) {
-			float n_dark = texture(dark_patch_noise_tex, warped_coord / 512.0).r;
+			float n_dark = texture(dark_patch_noise_tex, sample_coord).r;
 			if (n_dark > dark_patch_threshold) {
 				final_color = dark_patch_color;
 			}
@@ -86,7 +90,7 @@ void fragment() {
 
 		// 采样浅色斑块遮罩 (叠加上层)
 		if (enable_light_patch) {
-			float n_light = texture(light_patch_noise_tex, warped_coord / 512.0).r;
+			float n_light = texture(light_patch_noise_tex, sample_coord).r;
 			if (n_light > light_patch_threshold) {
 				final_color = light_patch_color;
 			}
@@ -95,7 +99,7 @@ void fragment() {
 		// =========================================================
 		// 模式 1: 等高阶梯分级 (Contour Bands)
 		// =========================================================
-		float raw_noise = texture(base_noise_tex, warped_coord / 512.0).r;
+		float raw_noise = texture(base_noise_tex, sample_coord).r;
 		float centered = (raw_noise - 0.5) * noise_contrast + 0.5 + noise_offset;
 		float norm_val = clamp(centered, 0.0, 0.9999);
 		float scaled = norm_val * float(num_bands);
@@ -114,12 +118,6 @@ void fragment() {
 				final_color = mix(final_color, isoline_color, 0.65);
 			}
 		}
-	}
-
-	// 像素微观噪点颗粒
-	if (enable_micro_grain) {
-		float grain = fract(sin(dot(floor(pixel_coord), vec2(12.9898, 78.233))) * 43758.5453) * 2.0 - 1.0;
-		final_color.rgb += grain * grain_strength;
 	}
 
 	COLOR = final_color;

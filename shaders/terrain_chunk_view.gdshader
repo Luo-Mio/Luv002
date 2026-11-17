@@ -8,6 +8,7 @@ uniform vec4 border_color : source_color = vec4(0.9, 0.75, 0.2, 1.0);
 // =========================================================
 // 草地 (ID = 1) 专属参数: 大底色 + 阈值斑块遮罩 (世界空间连续采样)
 // =========================================================
+uniform float grass_patch_zoom : hint_range(0.1, 5.0) = 1.0; // 图案等比整体缩放 (保持形状纯缩放)
 uniform vec4 grass_base_color : source_color = vec4(0.23, 0.49, 0.27, 1.0);
 
 uniform bool grass_enable_dark_patch = true;
@@ -24,9 +25,6 @@ uniform bool grass_enable_warp = true;
 uniform float grass_warp_strength : hint_range(0.0, 100.0) = 25.0;
 uniform float grass_irrational_rot : hint_range(0.0, 6.28318) = 2.399963;
 uniform sampler2D grass_warp_noise_tex : filter_linear, repeat_enable;
-
-uniform bool grass_enable_micro_grain = true;
-uniform float grass_grain_strength : hint_range(0.0, 0.2) = 0.04;
 
 varying vec3 v_world_pos;
 
@@ -50,28 +48,25 @@ vec3 evaluate_grass(vec2 world_xz) {
 		coord += vec2(wx, wy) * grass_warp_strength;
 	}
 
+	// 2. 图案等比整体缩放 (保留现有噪波的所有形状细节，纯粹几何缩放)
+	vec2 sample_coord = coord / (512.0 * max(grass_patch_zoom, 0.001));
+
 	vec4 col = grass_base_color;
 
-	// 2. 深色斑块 (Dark Patch)
+	// 3. 深色斑块 (Dark Patch)
 	if (grass_enable_dark_patch) {
-		float n_dark = texture(grass_dark_noise_tex, coord / 512.0).r;
+		float n_dark = texture(grass_dark_noise_tex, sample_coord).r;
 		if (n_dark > grass_dark_threshold) {
 			col = grass_dark_patch_color;
 		}
 	}
 
-	// 3. 浅色斑块 (Light Patch)
+	// 4. 浅色斑块 (Light Patch)
 	if (grass_enable_light_patch) {
-		float n_light = texture(grass_light_noise_tex, coord / 512.0).r;
+		float n_light = texture(grass_light_noise_tex, sample_coord).r;
 		if (n_light > grass_light_threshold) {
 			col = grass_light_patch_color;
 		}
-	}
-
-	// 4. 像素微观颗粒
-	if (grass_enable_micro_grain) {
-		float grain = fract(sin(dot(floor(world_xz), vec2(12.9898, 78.233))) * 43758.5453) * 2.0 - 1.0;
-		col.rgb += grain * grass_grain_strength;
 	}
 
 	return col.rgb;

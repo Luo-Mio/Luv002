@@ -11,6 +11,15 @@ extends BaseTerrainType
 		_apply_parameters_to_material()
 
 # =========================================================
+# 图案等比几何缩放 (纯粹放大/缩小现有图案形状，不改变噪波内部形态)
+# =========================================================
+@export_group("Pattern Zoom (图案等比缩放)")
+@export_range(0.1, 5.0, 0.05) var patch_zoom: float = 1.0:
+	set(val):
+		patch_zoom = val
+		_apply_parameters_to_material()
+
+# =========================================================
 # 模式 0: 主草地大底色 (占 ~75% 面积)
 # =========================================================
 @export_group("Mode 0: Base Grass (主草地大底色)")
@@ -26,14 +35,6 @@ extends BaseTerrainType
 @export var enable_dark_patch: bool = true:
 	set(val):
 		enable_dark_patch = val
-		_apply_parameters_to_material()
-
-# 直观噪波大小调节 (像素尺寸): 拉大斑块变大，拉小斑块变碎！
-@export_range(16.0, 1024.0, 4.0, "suffix:px") var dark_patch_size: float = 200.0:
-	set(val):
-		dark_patch_size = val
-		if dark_patch_noise != null and val > 0.0:
-			dark_patch_noise.frequency = 1.0 / val
 		_apply_parameters_to_material()
 
 @export var dark_patch_color: Color = Color("214e2b"): # 阴影深绿
@@ -64,14 +65,6 @@ extends BaseTerrainType
 		enable_light_patch = val
 		_apply_parameters_to_material()
 
-# 直观噪波大小调节 (像素尺寸): 拉大斑块变大，拉小斑块变碎！
-@export_range(16.0, 1024.0, 4.0, "suffix:px") var light_patch_size: float = 120.0:
-	set(val):
-		light_patch_size = val
-		if light_patch_noise != null and val > 0.0:
-			light_patch_noise.frequency = 1.0 / val
-		_apply_parameters_to_material()
-
 @export var light_patch_color: Color = Color("6cb83e"): # 鲜亮嫩芽绿
 	set(val):
 		light_patch_color = val
@@ -100,14 +93,6 @@ extends BaseTerrainType
 		enable_warp = val
 		_apply_parameters_to_material()
 
-# 微观扰动褶皱大小 (像素尺寸)
-@export_range(8.0, 256.0, 2.0, "suffix:px") var warp_scale: float = 40.0:
-	set(val):
-		warp_scale = val
-		if warp_noise != null and val > 0.0:
-			warp_noise.frequency = 1.0 / val
-		_apply_parameters_to_material()
-
 @export_range(0.0, 100.0, 0.5) var warp_strength: float = 25.0:
 	set(val):
 		warp_strength = val
@@ -128,30 +113,9 @@ extends BaseTerrainType
 		_setup_noise_textures()
 
 # =========================================================
-# 微观像素颗粒感 (增强 2D/2.5D 手绘颗粒感)
-# =========================================================
-@export_group("Micro Grain (像素颗粒感)")
-@export var enable_micro_grain: bool = true:
-	set(val):
-		enable_micro_grain = val
-		_apply_parameters_to_material()
-
-@export_range(0.0, 0.2, 0.01) var grain_strength: float = 0.04:
-	set(val):
-		grain_strength = val
-		_apply_parameters_to_material()
-
-# =========================================================
 # 模式 1 兼容: 等高阶梯分级 (Contour Bands)
 # =========================================================
 @export_group("Mode 1: Contour Bands (等高阶梯分级参数)")
-@export_range(16.0, 2048.0, 4.0, "suffix:px") var base_noise_size: float = 160.0:
-	set(val):
-		base_noise_size = val
-		if base_noise != null and val > 0.0:
-			base_noise.frequency = 1.0 / val
-		_apply_parameters_to_material()
-
 @export var base_noise: FastNoiseLite:
 	set(val):
 		if base_noise != null and base_noise.changed.is_connected(_on_noise_changed):
@@ -226,7 +190,7 @@ func _init_default_noises() -> void:
 		var nd = FastNoiseLite.new()
 		nd.seed = 1234
 		nd.noise_type = FastNoiseLite.TYPE_SIMPLEX_SMOOTH
-		nd.frequency = 1.0 / dark_patch_size
+		nd.frequency = 0.005
 		nd.fractal_type = FastNoiseLite.FRACTAL_FBM
 		nd.fractal_octaves = 3
 		dark_patch_noise = nd
@@ -235,7 +199,7 @@ func _init_default_noises() -> void:
 		var nl = FastNoiseLite.new()
 		nl.seed = 5678
 		nl.noise_type = FastNoiseLite.TYPE_SIMPLEX_SMOOTH
-		nl.frequency = 1.0 / light_patch_size
+		nl.frequency = 0.008
 		nl.fractal_type = FastNoiseLite.FRACTAL_FBM
 		nl.fractal_octaves = 3
 		light_patch_noise = nl
@@ -244,7 +208,7 @@ func _init_default_noises() -> void:
 		var nw = FastNoiseLite.new()
 		nw.seed = 9999
 		nw.noise_type = FastNoiseLite.TYPE_SIMPLEX_SMOOTH
-		nw.frequency = 1.0 / warp_scale
+		nw.frequency = 0.018
 		nw.fractal_type = FastNoiseLite.FRACTAL_FBM
 		nw.fractal_octaves = 2
 		warp_noise = nw
@@ -253,7 +217,7 @@ func _init_default_noises() -> void:
 		var nb = FastNoiseLite.new()
 		nb.seed = 3333
 		nb.noise_type = FastNoiseLite.TYPE_SIMPLEX_SMOOTH
-		nb.frequency = 1.0 / base_noise_size
+		nb.frequency = 0.006
 		nb.fractal_type = FastNoiseLite.FRACTAL_FBM
 		nb.fractal_octaves = 3
 		base_noise = nb
@@ -316,6 +280,7 @@ func _apply_parameters_to_material() -> void:
 		return
 
 	_material.set_shader_parameter("color_mode", color_mode)
+	_material.set_shader_parameter("patch_zoom", patch_zoom)
 	_material.set_shader_parameter("base_color", base_color)
 	_material.set_shader_parameter("enable_dark_patch", enable_dark_patch)
 	_material.set_shader_parameter("dark_patch_color", dark_patch_color)
@@ -334,9 +299,6 @@ func _apply_parameters_to_material() -> void:
 	_material.set_shader_parameter("irrational_rot", irrational_rot)
 	if _warp_tex != null:
 		_material.set_shader_parameter("warp_noise_tex", _warp_tex)
-
-	_material.set_shader_parameter("enable_micro_grain", enable_micro_grain)
-	_material.set_shader_parameter("grain_strength", grain_strength)
 
 	# Mode 1
 	if _base_tex != null:
@@ -360,6 +322,7 @@ func apply_to_chunk_material(mat: ShaderMaterial) -> void:
 	if mat == null:
 		return
 	_setup_noise_textures()
+	mat.set_shader_parameter("grass_patch_zoom", patch_zoom)
 	mat.set_shader_parameter("grass_base_color", base_color)
 	mat.set_shader_parameter("grass_enable_dark_patch", enable_dark_patch)
 	mat.set_shader_parameter("grass_dark_patch_color", dark_patch_color)
@@ -378,6 +341,3 @@ func apply_to_chunk_material(mat: ShaderMaterial) -> void:
 	mat.set_shader_parameter("grass_irrational_rot", irrational_rot)
 	if _warp_tex != null:
 		mat.set_shader_parameter("grass_warp_noise_tex", _warp_tex)
-
-	mat.set_shader_parameter("grass_enable_micro_grain", enable_micro_grain)
-	mat.set_shader_parameter("grass_grain_strength", grain_strength)
