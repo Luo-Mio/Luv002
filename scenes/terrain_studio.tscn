@@ -1,0 +1,66 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/terrain/terrain_studio_controller.gd" id="1_dowhy"]
+[ext_resource type="Script" path="res://scripts/terrain/grass_terrain_node.gd" id="2_6g125"]
+[ext_resource type="Shader" path="res://shaders/grass_contour.gdshader" id="3_tdfat"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_acint"]
+shader = ExtResource("3_tdfat")
+shader_parameter/base_freq = 0.012
+shader_parameter/base_octaves = 3
+shader_parameter/warp_freq = 0.028
+shader_parameter/warp_strength = 35.0
+shader_parameter/irrational_rot = 2.399963
+shader_parameter/num_bands = 4
+shader_parameter/color_band_0 = Color(0.12156863, 0.21960784, 0.14117648, 1)
+shader_parameter/color_band_1 = Color(0.18039216, 0.38039216, 0.2, 1)
+shader_parameter/color_band_2 = Color(0.3019608, 0.5803922, 0.25882354, 1)
+shader_parameter/color_band_3 = Color(0.52156866, 0.78039217, 0.32156864, 1)
+shader_parameter/color_band_4 = Color(0.72156864, 0.8784314, 0.4509804, 1)
+shader_parameter/color_band_5 = Color(0.8784314, 0.9490196, 0.6, 1)
+shader_parameter/show_isolines = false
+shader_parameter/isoline_color = Color(0.078431375, 0.14901961, 0.09019608, 1)
+
+[node name="TerrainStudio" type="Control" unique_id=267203159 node_paths=PackedStringArray("active_terrain")]
+layout_mode = 3
+anchors_preset = 0
+anchor_right = 1.0
+anchor_bottom = 1.0
+script = ExtResource("1_dowhy")
+active_terrain = NodePath("TerrainTypes/GrassTerrain")
+
+[node name="Background" type="ColorRect" parent="." unique_id=587874368]
+layout_mode = 0
+anchor_right = 1.0
+anchor_bottom = 1.0
+color = Color(0.07, 0.08, 0.1, 1)
+
+[node name="TerrainTypes" type="Node" parent="." unique_id=1023299970]
+
+[node name="GrassTerrain" type="Node" parent="TerrainTypes" unique_id=1165023469]
+script = ExtResource("2_6g125")
+terrain_id = 1
+terrain_name = "Grass (等高线草地)"
+
+[node name="CenterContainer" type="CenterContainer" parent="." unique_id=811609169]
+layout_mode = 0
+anchor_right = 1.0
+anchor_bottom = 1.0
+
+[node name="VBoxContainer" type="VBoxContainer" parent="CenterContainer" unique_id=489881660]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="InfoLabel" type="Label" parent="CenterContainer/VBoxContainer" unique_id=1145618986]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "地皮编号 [1] - Grass (等高线草地) | 512×512 区块 1:1 实时预览"
+horizontal_alignment = 1
+
+[node name="PreviewFrame" type="PanelContainer" parent="CenterContainer/VBoxContainer" unique_id=836883779]
+layout_mode = 2
+
+[node name="PreviewRect" type="ColorRect" parent="CenterContainer/VBoxContainer/PreviewFrame" unique_id=989203817]
+material = SubResource("ShaderMaterial_acint")
+custom_minimum_size = Vector2(512, 512)
+layout_mode = 2
