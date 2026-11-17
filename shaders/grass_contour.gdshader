@@ -1,102 +1,69 @@
 shader_type canvas_item;
 
-// Noise 1: Macro Base Noise (宏观基础形状)
-uniform float base_freq : hint_range(0.002, 0.08) = 0.012;
-uniform int base_octaves : hint_range(1, 5) = 3;
+uniform sampler2D base_noise_tex : filter_linear, repeat_enable;
+uniform sampler2D warp_noise_tex : filter_linear, repeat_enable;
 
-// Noise 2: Domain Warp with Irrational Matrix (无理数自扰动)
-uniform float warp_freq : hint_range(0.005, 0.15) = 0.028;
-uniform float warp_strength : hint_range(0.0, 80.0) = 35.0;
+// Domain Warp (无理数自扰动)
+uniform float warp_strength : hint_range(0.0, 100.0) = 30.0;
 uniform float irrational_rot : hint_range(0.0, 6.28318) = 2.399963; // 黄金角 ~137.5°
 
-// Contour Stepping (等高线阶梯分级与纯色色斑)
+// 对比度与亮度拉伸 (解决高斯钟形分布导致中间两色聚拢的问题)
+uniform float noise_contrast : hint_range(0.5, 4.0) = 1.9;
+uniform float noise_offset : hint_range(-0.5, 0.5) = 0.0;
+
+// 等高线阶梯分级 (num_bands 决定启用多少个色阶)
 uniform int num_bands : hint_range(2, 6) = 4;
-uniform vec4 color_band_0 : source_color = vec4(0.12, 0.22, 0.14, 1.0); // 最深暗绿
-uniform vec4 color_band_1 : source_color = vec4(0.18, 0.38, 0.20, 1.0); // 基础草绿
-uniform vec4 color_band_2 : source_color = vec4(0.30, 0.58, 0.26, 1.0); // 鲜亮嫩绿
-uniform vec4 color_band_3 : source_color = vec4(0.52, 0.78, 0.32, 1.0); // 阳光黄绿
-uniform vec4 color_band_4 : source_color = vec4(0.72, 0.88, 0.45, 1.0); // 浅浅高光
-uniform vec4 color_band_5 : source_color = vec4(0.88, 0.95, 0.60, 1.0); // 极亮黄绿
+uniform vec4 color_band_0 : source_color = vec4(0.11, 0.22, 0.12, 1.0); // 极深暗绿 (底层)
+uniform vec4 color_band_1 : source_color = vec4(0.18, 0.38, 0.19, 1.0); // 基础草绿
+uniform vec4 color_band_2 : source_color = vec4(0.28, 0.56, 0.25, 1.0); // 丰茂中绿
+uniform vec4 color_band_3 : source_color = vec4(0.48, 0.76, 0.27, 1.0); // 鲜亮嫩绿
+uniform vec4 color_band_4 : source_color = vec4(0.68, 0.88, 0.38, 1.0); // 阳光黄绿
+uniform vec4 color_band_5 : source_color = vec4(0.88, 0.96, 0.55, 1.0); // 浅浅高光
 
-uniform bool show_isolines = false; // 是否显示等高线细分线
-uniform vec4 isoline_color : source_color = vec4(0.08, 0.15, 0.09, 1.0);
-
-// --- High-Performance GPU Noise Functions ---
-vec2 hash2(vec2 p) {
-	p = vec2(dot(p, vec2(127.1, 311.7)), dot(p, vec2(269.5, 183.3)));
-	return -1.0 + 2.0 * fract(sin(p) * 43758.5453123);
-}
-
-float gradient_noise(vec2 p) {
-	vec2 i = floor(p);
-	vec2 f = fract(p);
-	vec2 u = f * f * (3.0 - 2.0 * f); // Quintic or cubic interpolation
-
-	return mix(
-		mix(dot(hash2(i + vec2(0.0, 0.0)), f - vec2(0.0, 0.0)),
-		    dot(hash2(i + vec2(1.0, 0.0)), f - vec2(1.0, 0.0)), u.x),
-		mix(dot(hash2(i + vec2(0.0, 1.0)), f - vec2(0.0, 1.0)),
-		    dot(hash2(i + vec2(1.0, 1.0)), f - vec2(1.0, 1.0)), u.x),
-		u.y
-	);
-}
-
-// Fractal Brownian Motion (fBm)
-float fbm(vec2 p, int octaves) {
-	float val = 0.0;
-	float amp = 0.5;
-	float freq = 1.0;
-	for (int i = 0; i < octaves; i++) {
-		val += amp * gradient_noise(p * freq);
-		freq *= 2.02;
-		amp *= 0.5;
-	}
-	return val;
-}
+uniform bool show_isolines = false; // 是否显示等高线细边框
+uniform vec4 isoline_color : source_color = vec4(0.07, 0.13, 0.08, 1.0);
 
 void fragment() {
-	// Pixel coordinates in 512x512 space
-	vec2 coord = UV * 512.0;
+	vec2 uv = UV;
 
-	// 1. 无理数旋转矩阵 (Irrational Golden Angle Matrix)
+	// 1. 无理数旋转矩阵 (黄金角变换打碎周期性)
 	float cos_a = cos(irrational_rot);
 	float sin_a = sin(irrational_rot);
 	mat2 rot_irrational = mat2(vec2(cos_a, -sin_a), vec2(sin_a, cos_a));
 
-	// 2. 领域扭曲采样 (Domain Warping)
-	// 用旋转后的无理数坐标采样高频微观扰动场
-	vec2 p_warped_coord = rot_irrational * (coord * 1.6180339887);
-	vec2 warp_offset = vec2(
-		fbm(coord * warp_freq, 2),
-		fbm((p_warped_coord + vec2(137.5, 92.3)) * warp_freq, 2)
-	) * warp_strength;
+	// 2. 采样微观扰动场 (Warp Field)
+	vec2 warped_coord = rot_irrational * (uv * 1.6180339887);
+	float warp_x = texture(warp_noise_tex, uv).r * 2.0 - 1.0;
+	float warp_y = texture(warp_noise_tex, warped_coord).r * 2.0 - 1.0;
 
-	// 3. 宏观基础噪波采样 (被扰动后的坐标)
-	vec2 final_sample_pos = (coord + warp_offset) * base_freq;
-	float raw_noise = fbm(final_sample_pos, base_octaves);
+	vec2 offset = vec2(warp_x, warp_y) * (warp_strength / 512.0);
 
-	// 归一化到 0.0 ~ 1.0
-	float norm_val = clamp(raw_noise * 0.5 + 0.5, 0.0, 0.9999);
+	// 3. 采样宏观基础噪波 (受到微观扰动扯动的坐标)
+	float raw_noise = texture(base_noise_tex, uv + offset).r;
 
-	// 4. 等高线阶梯分级 (Quantization Stepping)
-	float scaled_val = norm_val * float(num_bands);
-	int band_idx = int(floor(scaled_val));
+	// 4. 对比度直方图拉伸 (关键：将挤在中间的噪波均等推向两端，使各级颜色均匀铺开)
+	float centered = (raw_noise - 0.5) * noise_contrast + 0.5 + noise_offset;
+	float norm_val = clamp(centered, 0.0, 0.9999);
 
-	vec4 chosen_color = color_band_0;
-	if (band_idx == 0) chosen_color = color_band_0;
-	else if (band_idx == 1) chosen_color = color_band_1;
-	else if (band_idx == 2) chosen_color = color_band_2;
-	else if (band_idx == 3) chosen_color = color_band_3;
-	else if (band_idx == 4) chosen_color = color_band_4;
-	else chosen_color = color_band_5;
+	// 5. 等高线阶梯分级 (由 num_bands 控制当前划分为几个色阶)
+	float scaled = norm_val * float(num_bands);
+	int band_idx = int(floor(scaled));
+
+	vec4 final_color = color_band_0;
+	if (band_idx == 0) final_color = color_band_0;
+	else if (band_idx == 1) final_color = color_band_1;
+	else if (band_idx == 2) final_color = color_band_2;
+	else if (band_idx == 3) final_color = color_band_3;
+	else if (band_idx == 4) final_color = color_band_4;
+	else final_color = color_band_5;
 
 	// 可选等高线细分线
 	if (show_isolines) {
-		float step_fract = fract(scaled_val);
-		if (step_fract < 0.04 || step_fract > 0.96) {
-			chosen_color = mix(chosen_color, isoline_color, 0.6);
+		float f = fract(scaled);
+		if (f < 0.05 || f > 0.95) {
+			final_color = mix(final_color, isoline_color, 0.65);
 		}
 	}
 
-	COLOR = chosen_color;
+	COLOR = final_color;
 }
