@@ -53,7 +53,8 @@ uniform vec4 isoline_color : source_color = vec4(0.07, 0.13, 0.08, 1.0);
 uniform vec2 world_offset = vec2(0.0, 0.0);
 
 void fragment() {
-	vec2 pixel_coord = UV * 512.0 + world_offset;
+	// 严格对齐到 512x512 离散像素格中心，保证预览时也是真正的固定像素渲染
+	vec2 pixel_coord = floor(UV * 512.0 + world_offset) + 0.5;
 
 	// 1. 无理数自扰动场 (Domain Warp)
 	vec2 warped_coord = pixel_coord;

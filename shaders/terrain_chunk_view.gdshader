@@ -33,7 +33,9 @@ void vertex() {
 }
 
 vec3 evaluate_grass(vec2 world_xz) {
-	vec2 coord = world_xz;
+	// 关键核心：将连续世界坐标严格量化到 1x1 的离散世界像素网格中心
+	// 相当于在世界空间提前渲染/固定为离散像素，彻底消除数学光滑曲线在屏幕采样时的边缘抖动！
+	vec2 coord = floor(world_xz) + 0.5;
 
 	// 1. 无理数自扰动场 (Domain Warp)
 	if (grass_enable_warp) {
