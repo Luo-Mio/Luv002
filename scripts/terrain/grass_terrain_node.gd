@@ -28,6 +28,14 @@ extends BaseTerrainType
 		enable_dark_patch = val
 		_apply_parameters_to_material()
 
+# 直观噪波大小调节 (像素尺寸): 拉大斑块变大，拉小斑块变碎！
+@export_range(16.0, 1024.0, 4.0, "suffix:px") var dark_patch_size: float = 200.0:
+	set(val):
+		dark_patch_size = val
+		if dark_patch_noise != null and val > 0.0:
+			dark_patch_noise.frequency = 1.0 / val
+		_apply_parameters_to_material()
+
 @export var dark_patch_color: Color = Color("214e2b"): # 阴影深绿
 	set(val):
 		dark_patch_color = val
@@ -56,6 +64,14 @@ extends BaseTerrainType
 		enable_light_patch = val
 		_apply_parameters_to_material()
 
+# 直观噪波大小调节 (像素尺寸): 拉大斑块变大，拉小斑块变碎！
+@export_range(16.0, 1024.0, 4.0, "suffix:px") var light_patch_size: float = 120.0:
+	set(val):
+		light_patch_size = val
+		if light_patch_noise != null and val > 0.0:
+			light_patch_noise.frequency = 1.0 / val
+		_apply_parameters_to_material()
+
 @export var light_patch_color: Color = Color("6cb83e"): # 鲜亮嫩芽绿
 	set(val):
 		light_patch_color = val
@@ -82,6 +98,14 @@ extends BaseTerrainType
 @export var enable_warp: bool = true:
 	set(val):
 		enable_warp = val
+		_apply_parameters_to_material()
+
+# 微观扰动褶皱大小 (像素尺寸)
+@export_range(8.0, 256.0, 2.0, "suffix:px") var warp_scale: float = 40.0:
+	set(val):
+		warp_scale = val
+		if warp_noise != null and val > 0.0:
+			warp_noise.frequency = 1.0 / val
 		_apply_parameters_to_material()
 
 @export_range(0.0, 100.0, 0.5) var warp_strength: float = 25.0:
@@ -121,6 +145,13 @@ extends BaseTerrainType
 # 模式 1 兼容: 等高阶梯分级 (Contour Bands)
 # =========================================================
 @export_group("Mode 1: Contour Bands (等高阶梯分级参数)")
+@export_range(16.0, 2048.0, 4.0, "suffix:px") var base_noise_size: float = 160.0:
+	set(val):
+		base_noise_size = val
+		if base_noise != null and val > 0.0:
+			base_noise.frequency = 1.0 / val
+		_apply_parameters_to_material()
+
 @export var base_noise: FastNoiseLite:
 	set(val):
 		if base_noise != null and base_noise.changed.is_connected(_on_noise_changed):
@@ -195,7 +226,7 @@ func _init_default_noises() -> void:
 		var nd = FastNoiseLite.new()
 		nd.seed = 1234
 		nd.noise_type = FastNoiseLite.TYPE_SIMPLEX_SMOOTH
-		nd.frequency = 0.005
+		nd.frequency = 1.0 / dark_patch_size
 		nd.fractal_type = FastNoiseLite.FRACTAL_FBM
 		nd.fractal_octaves = 3
 		dark_patch_noise = nd
@@ -204,7 +235,7 @@ func _init_default_noises() -> void:
 		var nl = FastNoiseLite.new()
 		nl.seed = 5678
 		nl.noise_type = FastNoiseLite.TYPE_SIMPLEX_SMOOTH
-		nl.frequency = 0.008
+		nl.frequency = 1.0 / light_patch_size
 		nl.fractal_type = FastNoiseLite.FRACTAL_FBM
 		nl.fractal_octaves = 3
 		light_patch_noise = nl
@@ -213,7 +244,7 @@ func _init_default_noises() -> void:
 		var nw = FastNoiseLite.new()
 		nw.seed = 9999
 		nw.noise_type = FastNoiseLite.TYPE_SIMPLEX_SMOOTH
-		nw.frequency = 0.018
+		nw.frequency = 1.0 / warp_scale
 		nw.fractal_type = FastNoiseLite.FRACTAL_FBM
 		nw.fractal_octaves = 2
 		warp_noise = nw
@@ -222,7 +253,7 @@ func _init_default_noises() -> void:
 		var nb = FastNoiseLite.new()
 		nb.seed = 3333
 		nb.noise_type = FastNoiseLite.TYPE_SIMPLEX_SMOOTH
-		nb.frequency = 0.006
+		nb.frequency = 1.0 / base_noise_size
 		nb.fractal_type = FastNoiseLite.FRACTAL_FBM
 		nb.fractal_octaves = 3
 		base_noise = nb
