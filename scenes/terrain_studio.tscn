@@ -1,16 +1,36 @@
-[gd_scene format=3]
+[gd_scene format=3 uid="uid://cntjmtvqq0x2"]
 
-[ext_resource type="Script" path="res://scripts/terrain/terrain_studio_controller.gd" id="1_dowhy"]
-[ext_resource type="Script" path="res://scripts/terrain/grass_terrain_node.gd" id="2_6g125"]
-[ext_resource type="Shader" path="res://shaders/grass_contour.gdshader" id="3_tdfat"]
+[ext_resource type="Script" uid="uid://o6jqff34w257" path="res://scripts/terrain/terrain_studio_controller.gd" id="1_dowhy"]
+[ext_resource type="Script" uid="uid://bkjptj14qivvo" path="res://scripts/terrain/grass_terrain_node.gd" id="2_6g125"]
+[ext_resource type="Shader" uid="uid://co1vw5dao1irk" path="res://shaders/grass_contour.gdshader" id="3_tdfat"]
 
-[sub_resource type="ShaderMaterial" id="ShaderMaterial_acint"]
+[sub_resource type="FastNoiseLite" id="FastNoiseLite_dowhy"]
+seed = 1234
+frequency = 0.0031
+fractal_octaves = 3
+fractal_lacunarity = 1.61
+
+[sub_resource type="FastNoiseLite" id="FastNoiseLite_6g125"]
+seed = 5678
+frequency = 0.0134
+fractal_octaves = 2
+
+[sub_resource type="NoiseTexture2D" id="NoiseTexture2D_tdfat"]
+generate_mipmaps = false
+noise = SubResource("FastNoiseLite_dowhy")
+
+[sub_resource type="NoiseTexture2D" id="NoiseTexture2D_acint"]
+generate_mipmaps = false
+noise = SubResource("FastNoiseLite_6g125")
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_dps0j"]
 shader = ExtResource("3_tdfat")
-shader_parameter/base_freq = 0.012
-shader_parameter/base_octaves = 3
-shader_parameter/warp_freq = 0.028
-shader_parameter/warp_strength = 35.0
-shader_parameter/irrational_rot = 2.399963
+shader_parameter/base_noise_tex = SubResource("NoiseTexture2D_tdfat")
+shader_parameter/warp_noise_tex = SubResource("NoiseTexture2D_acint")
+shader_parameter/warp_strength = 17.0
+shader_parameter/irrational_rot = 1.29
+shader_parameter/noise_contrast = 1.0
+shader_parameter/noise_offset = 0.09999999999999998
 shader_parameter/num_bands = 4
 shader_parameter/color_band_0 = Color(0.12156863, 0.21960784, 0.14117648, 1)
 shader_parameter/color_band_1 = Color(0.18039216, 0.38039216, 0.2, 1)
@@ -23,9 +43,11 @@ shader_parameter/isoline_color = Color(0.078431375, 0.14901961, 0.09019608, 1)
 
 [node name="TerrainStudio" type="Control" unique_id=267203159 node_paths=PackedStringArray("active_terrain")]
 layout_mode = 3
-anchors_preset = 0
+anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
 script = ExtResource("1_dowhy")
 active_terrain = NodePath("TerrainTypes/GrassTerrain")
 
@@ -39,6 +61,19 @@ color = Color(0.07, 0.08, 0.1, 1)
 
 [node name="GrassTerrain" type="Node" parent="TerrainTypes" unique_id=1165023469]
 script = ExtResource("2_6g125")
+base_noise = SubResource("FastNoiseLite_dowhy")
+warp_noise = SubResource("FastNoiseLite_6g125")
+warp_strength = 17.0
+irrational_rot = 1.29
+noise_contrast = 1.0
+noise_offset = 0.09999999999999998
+color_band_0 = Color(0.12156863, 0.21960784, 0.14117648, 1)
+color_band_1 = Color(0.18039216, 0.38039216, 0.2, 1)
+color_band_2 = Color(0.3019608, 0.5803922, 0.25882354, 1)
+color_band_3 = Color(0.52156866, 0.78039217, 0.32156864, 1)
+color_band_4 = Color(0.72156864, 0.8784314, 0.4509804, 1)
+color_band_5 = Color(0.8784314, 0.9490196, 0.6, 1)
+isoline_color = Color(0.078431375, 0.14901961, 0.09019608, 1)
 terrain_id = 1
 terrain_name = "Grass (等高线草地)"
 
@@ -61,6 +96,6 @@ horizontal_alignment = 1
 layout_mode = 2
 
 [node name="PreviewRect" type="ColorRect" parent="CenterContainer/VBoxContainer/PreviewFrame" unique_id=989203817]
-material = SubResource("ShaderMaterial_acint")
+material = SubResource("ShaderMaterial_dps0j")
 custom_minimum_size = Vector2(512, 512)
 layout_mode = 2

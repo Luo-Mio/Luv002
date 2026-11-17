@@ -18,6 +18,12 @@ func _initialize_empty_mask() -> void:
 	mask_image.fill(Color(0.0, 0.0, 0.0, 0.0))
 	is_dirty = true
 
+# Fill entire 512x512 mask with a specific terrain ID and optional flags
+func fill_chunk(type_id: int, flags: int = 0) -> void:
+	var col = Color(float(type_id) / 255.0, float(flags) / 255.0, 0.0, 1.0)
+	mask_image.fill(col)
+	is_dirty = true
+
 # Get terrain ID at local coordinate (0 to 511)
 func get_tile(local_x: int, local_y: int) -> int:
 	if local_x < 0 or local_x >= CHUNK_SIZE or local_y < 0 or local_y >= CHUNK_SIZE:

@@ -3,22 +3,97 @@ class_name GrassTerrainNode
 extends BaseTerrainType
 
 # =========================================================
-# 完整噪波生成器 1: 宏观基础形状 (Base Noise Generator)
+# 着色模式切换: 0 = 补丁遮罩模式 (推荐), 1 = 等高阶梯分级模式
 # =========================================================
-@export_group("Noise 1: Macro Base (完整宏观噪波生成器)")
-@export var base_noise: FastNoiseLite:
+@export_enum("Patch Overlay (大底色+斑块遮罩)", "Contour Bands (等高阶梯分级)") var color_mode: int = 0:
 	set(val):
-		if base_noise != null and base_noise.changed.is_connected(_on_noise_changed):
-			base_noise.changed.disconnect(_on_noise_changed)
-		base_noise = val
-		if base_noise != null:
-			base_noise.changed.connect(_on_noise_changed)
+		color_mode = val
+		_apply_parameters_to_material()
+
+# =========================================================
+# 模式 0: 主草地大底色 (占 ~75% 面积)
+# =========================================================
+@export_group("Mode 0: Base Grass (主草地大底色)")
+@export var base_color: Color = Color("3a7d44"): # 丰茂中绿
+	set(val):
+		base_color = val
+		_apply_parameters_to_material()
+
+# =========================================================
+# 模式 0: 深色草斑补丁 (Dark Patch)
+# =========================================================
+@export_group("Mode 0: Dark Grass Patch (深色草斑补丁)")
+@export var enable_dark_patch: bool = true:
+	set(val):
+		enable_dark_patch = val
+		_apply_parameters_to_material()
+
+@export var dark_patch_color: Color = Color("214e2b"): # 阴影深绿
+	set(val):
+		dark_patch_color = val
+		_apply_parameters_to_material()
+
+@export_range(0.0, 1.0, 0.01) var dark_patch_threshold: float = 0.58:
+	set(val):
+		dark_patch_threshold = val
+		_apply_parameters_to_material()
+
+@export var dark_patch_noise: FastNoiseLite:
+	set(val):
+		if dark_patch_noise != null and dark_patch_noise.changed.is_connected(_on_noise_changed):
+			dark_patch_noise.changed.disconnect(_on_noise_changed)
+		dark_patch_noise = val
+		if dark_patch_noise != null:
+			dark_patch_noise.changed.connect(_on_noise_changed)
 		_setup_noise_textures()
 
 # =========================================================
-# 完整噪波生成器 2: 微观扰动场 (Warp Noise Generator)
+# 模式 0: 浅色草斑补丁 (Light Patch)
 # =========================================================
-@export_group("Noise 2: Domain Warp (完整微观噪波生成器)")
+@export_group("Mode 0: Light Grass Patch (浅色草斑补丁)")
+@export var enable_light_patch: bool = true:
+	set(val):
+		enable_light_patch = val
+		_apply_parameters_to_material()
+
+@export var light_patch_color: Color = Color("6cb83e"): # 鲜亮嫩芽绿
+	set(val):
+		light_patch_color = val
+		_apply_parameters_to_material()
+
+@export_range(0.0, 1.0, 0.01) var light_patch_threshold: float = 0.62:
+	set(val):
+		light_patch_threshold = val
+		_apply_parameters_to_material()
+
+@export var light_patch_noise: FastNoiseLite:
+	set(val):
+		if light_patch_noise != null and light_patch_noise.changed.is_connected(_on_noise_changed):
+			light_patch_noise.changed.disconnect(_on_noise_changed)
+		light_patch_noise = val
+		if light_patch_noise != null:
+			light_patch_noise.changed.connect(_on_noise_changed)
+		_setup_noise_textures()
+
+# =========================================================
+# 领域扭曲: 无理数黄金角自扰动场 (赋予斑块手绘苔藓有机边缘)
+# =========================================================
+@export_group("Domain Warp Math (无理数自扰动场)")
+@export var enable_warp: bool = true:
+	set(val):
+		enable_warp = val
+		_apply_parameters_to_material()
+
+@export_range(0.0, 100.0, 0.5) var warp_strength: float = 25.0:
+	set(val):
+		warp_strength = val
+		_apply_parameters_to_material()
+
+@export_range(0.0, 6.28318, 0.01) var irrational_rot: float = 2.399963: # 黄金角 137.5°
+	set(val):
+		irrational_rot = val
+		_apply_parameters_to_material()
+
 @export var warp_noise: FastNoiseLite:
 	set(val):
 		if warp_noise != null and warp_noise.changed.is_connected(_on_noise_changed):
@@ -29,29 +104,37 @@ extends BaseTerrainType
 		_setup_noise_textures()
 
 # =========================================================
-# 领域扭曲与无理数采样参数
+# 微观像素颗粒感 (增强 2D/2.5D 手绘颗粒感)
 # =========================================================
-@export_group("Domain Warp Math (无理数自扰动)")
-@export_range(0.0, 100.0, 0.5) var warp_strength: float = 30.0:
+@export_group("Micro Grain (像素颗粒感)")
+@export var enable_micro_grain: bool = true:
 	set(val):
-		warp_strength = val
+		enable_micro_grain = val
 		_apply_parameters_to_material()
 
-@export_range(0.0, 6.28318, 0.01) var irrational_rot: float = 2.399963: # 黄金角 137.5°
+@export_range(0.0, 0.2, 0.01) var grain_strength: float = 0.04:
 	set(val):
-		irrational_rot = val
+		grain_strength = val
 		_apply_parameters_to_material()
 
 # =========================================================
-# 阶梯色斑与直方图拉伸 (解决颜色聚集在中间两档的核心功能)
+# 模式 1 兼容: 等高阶梯分级 (Contour Bands)
 # =========================================================
-@export_group("Contours & Histogram (阶梯色斑与直方图扩展)")
+@export_group("Mode 1: Contour Bands (等高阶梯分级参数)")
+@export var base_noise: FastNoiseLite:
+	set(val):
+		if base_noise != null and base_noise.changed.is_connected(_on_noise_changed):
+			base_noise.changed.disconnect(_on_noise_changed)
+		base_noise = val
+		if base_noise != null:
+			base_noise.changed.connect(_on_noise_changed)
+		_setup_noise_textures()
+
 @export_range(2, 6, 1) var num_bands: int = 4:
 	set(val):
 		num_bands = val
 		_apply_parameters_to_material()
 
-# 对比度：将聚集在 0.4~0.6 的钟形正态分布向两端拉伸，使得各阶颜色均等铺开！
 @export_range(0.5, 4.0, 0.05) var noise_contrast: float = 1.9:
 	set(val):
 		noise_contrast = val
@@ -62,32 +145,27 @@ extends BaseTerrainType
 		noise_offset = val
 		_apply_parameters_to_material()
 
-@export var color_band_0: Color = Color("1c381f"): # 极深暗绿
+@export var color_band_0: Color = Color("1c381f"):
 	set(val):
 		color_band_0 = val
 		_apply_parameters_to_material()
-
-@export var color_band_1: Color = Color("2e6131"): # 基础草绿
+@export var color_band_1: Color = Color("2e6131"):
 	set(val):
 		color_band_1 = val
 		_apply_parameters_to_material()
-
-@export var color_band_2: Color = Color("488f3f"): # 丰茂中绿
+@export var color_band_2: Color = Color("488f3f"):
 	set(val):
 		color_band_2 = val
 		_apply_parameters_to_material()
-
-@export var color_band_3: Color = Color("7bc244"): # 鲜亮嫩绿
+@export var color_band_3: Color = Color("7bc244"):
 	set(val):
 		color_band_3 = val
 		_apply_parameters_to_material()
-
-@export var color_band_4: Color = Color("aee060"): # 阳光黄绿
+@export var color_band_4: Color = Color("aee060"):
 	set(val):
 		color_band_4 = val
 		_apply_parameters_to_material()
-
-@export var color_band_5: Color = Color("e0f78d"): # 浅浅高光
+@export var color_band_5: Color = Color("e0f78d"):
 	set(val):
 		color_band_5 = val
 		_apply_parameters_to_material()
@@ -96,7 +174,6 @@ extends BaseTerrainType
 	set(val):
 		show_isolines = val
 		_apply_parameters_to_material()
-
 @export var isoline_color: Color = Color("122114"):
 	set(val):
 		isoline_color = val
@@ -104,50 +181,88 @@ extends BaseTerrainType
 
 var _material: ShaderMaterial
 var _base_tex: NoiseTexture2D
+var _dark_tex: NoiseTexture2D
+var _light_tex: NoiseTexture2D
 var _warp_tex: NoiseTexture2D
 
 func _init() -> void:
 	terrain_id = 1
-	terrain_name = "Grass (等高线草地)"
+	terrain_name = "Grass (大底色+补丁草地)"
 	_init_default_noises()
 
 func _init_default_noises() -> void:
-	if base_noise == null:
-		var n1 = FastNoiseLite.new()
-		n1.seed = 1234
-		n1.noise_type = FastNoiseLite.TYPE_SIMPLEX_SMOOTH
-		n1.frequency = 0.008
-		n1.fractal_type = FastNoiseLite.FRACTAL_FBM
-		n1.fractal_octaves = 3
-		base_noise = n1 # setter will handle connection
+	if dark_patch_noise == null:
+		var nd = FastNoiseLite.new()
+		nd.seed = 1234
+		nd.noise_type = FastNoiseLite.TYPE_SIMPLEX_SMOOTH
+		nd.frequency = 0.005
+		nd.fractal_type = FastNoiseLite.FRACTAL_FBM
+		nd.fractal_octaves = 3
+		dark_patch_noise = nd
+
+	if light_patch_noise == null:
+		var nl = FastNoiseLite.new()
+		nl.seed = 5678
+		nl.noise_type = FastNoiseLite.TYPE_SIMPLEX_SMOOTH
+		nl.frequency = 0.008
+		nl.fractal_type = FastNoiseLite.FRACTAL_FBM
+		nl.fractal_octaves = 3
+		light_patch_noise = nl
 
 	if warp_noise == null:
-		var n2 = FastNoiseLite.new()
-		n2.seed = 5678
-		n2.noise_type = FastNoiseLite.TYPE_SIMPLEX_SMOOTH
-		n2.frequency = 0.02
-		n2.fractal_type = FastNoiseLite.FRACTAL_FBM
-		n2.fractal_octaves = 2
-		warp_noise = n2 # setter will handle connection
+		var nw = FastNoiseLite.new()
+		nw.seed = 9999
+		nw.noise_type = FastNoiseLite.TYPE_SIMPLEX_SMOOTH
+		nw.frequency = 0.018
+		nw.fractal_type = FastNoiseLite.FRACTAL_FBM
+		nw.fractal_octaves = 2
+		warp_noise = nw
+
+	if base_noise == null:
+		var nb = FastNoiseLite.new()
+		nb.seed = 3333
+		nb.noise_type = FastNoiseLite.TYPE_SIMPLEX_SMOOTH
+		nb.frequency = 0.006
+		nb.fractal_type = FastNoiseLite.FRACTAL_FBM
+		nb.fractal_octaves = 3
+		base_noise = nb
 
 func _setup_noise_textures() -> void:
-	if base_noise != null:
-		if _base_tex == null:
-			_base_tex = NoiseTexture2D.new()
-			_base_tex.width = 512
-			_base_tex.height = 512
-			_base_tex.seamless = false
-			_base_tex.generate_mipmaps = false
-		_base_tex.noise = base_noise
+	if dark_patch_noise != null:
+		if _dark_tex == null:
+			_dark_tex = NoiseTexture2D.new()
+			_dark_tex.width = 512
+			_dark_tex.height = 512
+			_dark_tex.seamless = true
+			_dark_tex.generate_mipmaps = false
+		_dark_tex.noise = dark_patch_noise
+
+	if light_patch_noise != null:
+		if _light_tex == null:
+			_light_tex = NoiseTexture2D.new()
+			_light_tex.width = 512
+			_light_tex.height = 512
+			_light_tex.seamless = true
+			_light_tex.generate_mipmaps = false
+		_light_tex.noise = light_patch_noise
 
 	if warp_noise != null:
 		if _warp_tex == null:
 			_warp_tex = NoiseTexture2D.new()
 			_warp_tex.width = 512
 			_warp_tex.height = 512
-			_warp_tex.seamless = false
+			_warp_tex.seamless = true
 			_warp_tex.generate_mipmaps = false
 		_warp_tex.noise = warp_noise
+
+	if base_noise != null:
+		if _base_tex == null:
+			_base_tex = NoiseTexture2D.new()
+			_base_tex.width = 512
+			_base_tex.height = 512
+			_base_tex.seamless = true
+			_base_tex.generate_mipmaps = false
+		_base_tex.noise = base_noise
 
 	_apply_parameters_to_material()
 
@@ -169,13 +284,32 @@ func _apply_parameters_to_material() -> void:
 	if _material == null:
 		return
 
-	if _base_tex != null:
-		_material.set_shader_parameter("base_noise_tex", _base_tex)
+	_material.set_shader_parameter("color_mode", color_mode)
+	_material.set_shader_parameter("base_color", base_color)
+	_material.set_shader_parameter("enable_dark_patch", enable_dark_patch)
+	_material.set_shader_parameter("dark_patch_color", dark_patch_color)
+	_material.set_shader_parameter("dark_patch_threshold", dark_patch_threshold)
+	if _dark_tex != null:
+		_material.set_shader_parameter("dark_patch_noise_tex", _dark_tex)
+
+	_material.set_shader_parameter("enable_light_patch", enable_light_patch)
+	_material.set_shader_parameter("light_patch_color", light_patch_color)
+	_material.set_shader_parameter("light_patch_threshold", light_patch_threshold)
+	if _light_tex != null:
+		_material.set_shader_parameter("light_patch_noise_tex", _light_tex)
+
+	_material.set_shader_parameter("enable_warp", enable_warp)
+	_material.set_shader_parameter("warp_strength", warp_strength)
+	_material.set_shader_parameter("irrational_rot", irrational_rot)
 	if _warp_tex != null:
 		_material.set_shader_parameter("warp_noise_tex", _warp_tex)
 
-	_material.set_shader_parameter("warp_strength", warp_strength)
-	_material.set_shader_parameter("irrational_rot", irrational_rot)
+	_material.set_shader_parameter("enable_micro_grain", enable_micro_grain)
+	_material.set_shader_parameter("grain_strength", grain_strength)
+
+	# Mode 1
+	if _base_tex != null:
+		_material.set_shader_parameter("base_noise_tex", _base_tex)
 	_material.set_shader_parameter("noise_contrast", noise_contrast)
 	_material.set_shader_parameter("noise_offset", noise_offset)
 	_material.set_shader_parameter("num_bands", num_bands)
@@ -189,3 +323,30 @@ func _apply_parameters_to_material() -> void:
 	_material.set_shader_parameter("isoline_color", isoline_color)
 
 	properties_changed.emit()
+
+# 将草地 Shader 参数同步给 3D 区块着色材质
+func apply_to_chunk_material(mat: ShaderMaterial) -> void:
+	if mat == null:
+		return
+	_setup_noise_textures()
+	mat.set_shader_parameter("grass_base_color", base_color)
+	mat.set_shader_parameter("grass_enable_dark_patch", enable_dark_patch)
+	mat.set_shader_parameter("grass_dark_patch_color", dark_patch_color)
+	mat.set_shader_parameter("grass_dark_threshold", dark_patch_threshold)
+	if _dark_tex != null:
+		mat.set_shader_parameter("grass_dark_noise_tex", _dark_tex)
+
+	mat.set_shader_parameter("grass_enable_light_patch", enable_light_patch)
+	mat.set_shader_parameter("grass_light_patch_color", light_patch_color)
+	mat.set_shader_parameter("grass_light_threshold", light_patch_threshold)
+	if _light_tex != null:
+		mat.set_shader_parameter("grass_light_noise_tex", _light_tex)
+
+	mat.set_shader_parameter("grass_enable_warp", enable_warp)
+	mat.set_shader_parameter("grass_warp_strength", warp_strength)
+	mat.set_shader_parameter("grass_irrational_rot", irrational_rot)
+	if _warp_tex != null:
+		mat.set_shader_parameter("grass_warp_noise_tex", _warp_tex)
+
+	mat.set_shader_parameter("grass_enable_micro_grain", enable_micro_grain)
+	mat.set_shader_parameter("grass_grain_strength", grain_strength)

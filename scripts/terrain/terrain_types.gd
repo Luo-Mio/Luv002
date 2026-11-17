@@ -4,9 +4,9 @@ extends RefCounted
 # R Channel: Terrain ID (0 is strictly EMPTY / Void)
 enum ID {
 	EMPTY = 0,     # 空地 / 虚空 / 未生成地块
-	SAND = 1,      # 沙地
+	GRASS = 1,     # 草地 (用户指定地皮编号为 1)
 	DIRT = 2,      # 泥土
-	GRASS = 3,     # 草地
+	SAND = 3,      # 沙地
 	FARMLAND = 4,  # 耕地
 	STONE = 5,     # 石砖 / 硬化地面
 }

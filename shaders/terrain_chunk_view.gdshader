@@ -5,6 +5,78 @@ uniform sampler2D chunk_mask : filter_nearest;
 uniform vec4 empty_color : source_color = vec4(0.12, 0.15, 0.18, 1.0);
 uniform vec4 border_color : source_color = vec4(0.9, 0.75, 0.2, 1.0);
 
+// =========================================================
+// 草地 (ID = 1) 专属参数: 大底色 + 阈值斑块遮罩 (世界空间连续采样)
+// =========================================================
+uniform vec4 grass_base_color : source_color = vec4(0.23, 0.49, 0.27, 1.0);
+
+uniform bool grass_enable_dark_patch = true;
+uniform vec4 grass_dark_patch_color : source_color = vec4(0.13, 0.28, 0.17, 1.0);
+uniform float grass_dark_threshold : hint_range(0.0, 1.0) = 0.58;
+uniform sampler2D grass_dark_noise_tex : filter_linear, repeat_enable;
+
+uniform bool grass_enable_light_patch = true;
+uniform vec4 grass_light_patch_color : source_color = vec4(0.43, 0.76, 0.24, 1.0);
+uniform float grass_light_threshold : hint_range(0.0, 1.0) = 0.62;
+uniform sampler2D grass_light_noise_tex : filter_linear, repeat_enable;
+
+uniform bool grass_enable_warp = true;
+uniform float grass_warp_strength : hint_range(0.0, 100.0) = 25.0;
+uniform float grass_irrational_rot : hint_range(0.0, 6.28318) = 2.399963;
+uniform sampler2D grass_warp_noise_tex : filter_linear, repeat_enable;
+
+uniform bool grass_enable_micro_grain = true;
+uniform float grass_grain_strength : hint_range(0.0, 0.2) = 0.04;
+
+varying vec3 v_world_pos;
+
+void vertex() {
+	v_world_pos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
+}
+
+vec3 evaluate_grass(vec2 world_xz) {
+	vec2 coord = world_xz;
+
+	// 1. 无理数自扰动场 (Domain Warp)
+	if (grass_enable_warp) {
+		float cos_a = cos(grass_irrational_rot);
+		float sin_a = sin(grass_irrational_rot);
+		mat2 rot_irrational = mat2(vec2(cos_a, -sin_a), vec2(sin_a, cos_a));
+
+		vec2 warp_uv = coord / 512.0;
+		vec2 warp_sub = rot_irrational * (warp_uv * 1.6180339887);
+		float wx = texture(grass_warp_noise_tex, warp_uv).r * 2.0 - 1.0;
+		float wy = texture(grass_warp_noise_tex, warp_sub).r * 2.0 - 1.0;
+		coord += vec2(wx, wy) * grass_warp_strength;
+	}
+
+	vec4 col = grass_base_color;
+
+	// 2. 深色斑块 (Dark Patch)
+	if (grass_enable_dark_patch) {
+		float n_dark = texture(grass_dark_noise_tex, coord / 512.0).r;
+		if (n_dark > grass_dark_threshold) {
+			col = grass_dark_patch_color;
+		}
+	}
+
+	// 3. 浅色斑块 (Light Patch)
+	if (grass_enable_light_patch) {
+		float n_light = texture(grass_light_noise_tex, coord / 512.0).r;
+		if (n_light > grass_light_threshold) {
+			col = grass_light_patch_color;
+		}
+	}
+
+	// 4. 像素微观颗粒
+	if (grass_enable_micro_grain) {
+		float grain = fract(sin(dot(floor(world_xz), vec2(12.9898, 78.233))) * 43758.5453) * 2.0 - 1.0;
+		col.rgb += grain * grass_grain_strength;
+	}
+
+	return col.rgb;
+}
+
 void fragment() {
 	vec4 mask_data = texture(chunk_mask, UV);
 	int terrain_id = int(round(mask_data.r * 255.0));
@@ -20,11 +92,12 @@ void fragment() {
 		float checker = mod(check.x + check.y, 2.0);
 		col = mix(empty_color.rgb, empty_color.rgb * 1.15, checker);
 	} else if (terrain_id == 1) {
-		col = vec3(0.85, 0.75, 0.45); // Sand
+		// GRASS: Sample in world space (X, Z) - Seamless across chunks!
+		col = evaluate_grass(v_world_pos.xz);
 	} else if (terrain_id == 2) {
 		col = vec3(0.45, 0.32, 0.22); // Dirt
 	} else if (terrain_id == 3) {
-		col = vec3(0.25, 0.58, 0.28); // Grass
+		col = vec3(0.85, 0.75, 0.45); // Sand
 	} else if (terrain_id == 4) {
 		col = vec3(0.35, 0.22, 0.14); // Farmland
 	} else {

@@ -20,6 +20,8 @@ var chunks: Dictionary = {}
 
 func _ready() -> void:
 	initialize_15x15_world()
+	# 主场景默认将 (0, 0) 中心区块底片的 ID 通道涂为 1 (GRASS)
+	fill_chunk(Vector2i(0, 0), TerrainTypes.ID.GRASS)
 
 # Initialize the 15x15 chunk world (225 chunks, all pixels set to 0 EMPTY)
 func initialize_15x15_world() -> void:
@@ -78,6 +80,14 @@ func set_global_tile(gx: int, gy: int, tile_id: int) -> void:
 	if chunk != null:
 		chunk.set_tile(loc["local"].x, loc["local"].y, tile_id)
 		chunk_tile_changed.emit(loc["chunk"], loc["local"], tile_id)
+
+# Fill an entire chunk with a specific terrain ID
+func fill_chunk(coord: Vector2i, type_id: int, flags: int = 0) -> void:
+	var chunk = get_chunk(coord)
+	if chunk != null:
+		chunk.fill_chunk(type_id, flags)
+		chunk_tile_changed.emit(coord, Vector2i.ZERO, type_id)
+		print("[TerrainManager] Chunk (%d, %d) mask filled with Terrain ID %d." % [coord.x, coord.y, type_id])
 
 # Export a single chunk mask as PNG for external tools (Photoshop/Aseprite)
 func export_chunk_mask_png(chunk_coord: Vector2i, file_path: String) -> Error:
