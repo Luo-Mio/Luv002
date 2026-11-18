@@ -18,6 +18,12 @@ const VIEWPORT_HEIGHT: float = 540.0
 var _offset: Vector3 = Vector3.ZERO
 
 func _ready() -> void:
+	# 必须彻底关闭相机的物理插值！
+	# 因为相机在 _process (渲染帧) 中直接实时跟随玩家插值后的渲染坐标，
+	# 如果不关闭相机的物理插值，引擎会在渲染前根据物理拍子对相机再次插值，导致相机和角色位置产生微小的相位差争抢，
+	# 在左右移动时造成角色像素列的反复跳动抖动！
+	physics_interpolation_mode = Node.PHYSICS_INTERPOLATION_MODE_OFF
+
 	projection = Camera3D.PROJECTION_ORTHOGONAL
 	# 1 world unit = 1 game pixel (540 units visible vertically)
 	size = VIEWPORT_HEIGHT
@@ -34,7 +40,6 @@ func _ready() -> void:
 
 	if target != null:
 		global_position = _calculate_desired_position()
-		reset_physics_interpolation()
 
 func _calculate_desired_position() -> Vector3:
 	var target_pos = target.global_position
