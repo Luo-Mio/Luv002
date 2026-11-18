@@ -8,6 +8,24 @@ var mask_image: Image
 var gpu_texture: ImageTexture
 var is_dirty: bool = false
 
+# 方案 B 核心: 提前烘焙的 512x512 静态像素艺术贴图 (像广告牌贴在地面上，运行时零开销、零抖动)
+var baked_image: Image
+var baked_texture: ImageTexture
+var is_baked_dirty: bool = false
+
+func set_baked_image(p_image: Image) -> void:
+	baked_image = p_image
+	is_baked_dirty = true
+
+func get_or_create_baked_texture() -> ImageTexture:
+	if baked_texture == null and baked_image != null:
+		baked_texture = ImageTexture.create_from_image(baked_image)
+		is_baked_dirty = false
+	elif is_baked_dirty and baked_texture != null and baked_image != null:
+		baked_texture.update(baked_image)
+		is_baked_dirty = false
+	return baked_texture
+
 func _init(p_coord: Vector2i) -> void:
 	coord = p_coord
 	_initialize_empty_mask()

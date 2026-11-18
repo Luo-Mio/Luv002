@@ -35,17 +35,29 @@ func _initial_setup() -> void:
 func _on_player_chunk_changed(_old: Vector2i, new_chunk: Vector2i) -> void:
 	_update_visible_chunks(new_chunk)
 
+# 当底片发生瓦片变更时，重新烘焙该区块贴图
 func _on_chunk_tile_changed(chunk_coord: Vector2i, _local_pos: Vector2i, _tile_id: int) -> void:
-	if chunk_meshes.has(chunk_coord):
-		var chunk_data = terrain_manager.get_chunk(chunk_coord)
-		if chunk_data != null and chunk_data.is_dirty:
-			chunk_data.get_or_create_texture()
+	var chunk_data = terrain_manager.get_chunk(chunk_coord)
+	if chunk_data != null and grass_terrain != null:
+		var baked_img = grass_terrain.bake_chunk_image(chunk_coord, chunk_data.mask_image)
+		chunk_data.set_baked_image(baked_img)
+		var tex = chunk_data.get_or_create_baked_texture()
+		if chunk_meshes.has(chunk_coord):
+			var mesh_inst = chunk_meshes[chunk_coord]
+			if mesh_inst != null and mesh_inst.material_override is ShaderMaterial:
+				mesh_inst.material_override.set_shader_parameter("baked_chunk_texture", tex)
 
+# 当草地生成器参数改变时，重新烘焙所有当前活动可见区块
 func _on_grass_properties_changed() -> void:
 	for c in chunk_meshes.keys():
-		var mesh_inst = chunk_meshes[c]
-		if mesh_inst != null and mesh_inst.material_override is ShaderMaterial:
-			grass_terrain.apply_to_chunk_material(mesh_inst.material_override)
+		var chunk_data = terrain_manager.get_chunk(c)
+		if chunk_data != null and grass_terrain != null:
+			var baked_img = grass_terrain.bake_chunk_image(c, chunk_data.mask_image)
+			chunk_data.set_baked_image(baked_img)
+			var tex = chunk_data.get_or_create_baked_texture()
+			var mesh_inst = chunk_meshes[c]
+			if mesh_inst != null and mesh_inst.material_override is ShaderMaterial:
+				mesh_inst.material_override.set_shader_parameter("baked_chunk_texture", tex)
 
 func _update_visible_chunks(center_chunk: Vector2i) -> void:
 	if terrain_manager == null or center_chunk.x == 999999:
@@ -81,7 +93,7 @@ func _create_chunk_mesh(c: Vector2i) -> MeshInstance3D:
 	var mesh_inst = MeshInstance3D.new()
 	mesh_inst.name = "ChunkMesh_%d_%d" % [c.x, c.y]
 
-	# PlaneMesh 512x512
+	# PlaneMesh 512x512 (像广告牌一样贴在地面 XZ 平面上)
 	var plane = PlaneMesh.new()
 	plane.size = Vector2(TerrainChunk.CHUNK_SIZE, TerrainChunk.CHUNK_SIZE)
 	mesh_inst.mesh = plane
@@ -90,15 +102,20 @@ func _create_chunk_mesh(c: Vector2i) -> MeshInstance3D:
 	var center = chunk_system.chunk_to_world_center(c)
 	mesh_inst.position = center
 
-	# Assign shader material with chunk mask texture
+	# 方案 B: 赋给材质提前烘焙好的静态 512x512 像素艺术贴图
 	var chunk_data = terrain_manager.get_chunk(c)
 	if chunk_data != null:
 		var mat = ShaderMaterial.new()
 		mat.shader = chunk_material_shader
-		var tex = chunk_data.get_or_create_texture()
-		mat.set_shader_parameter("chunk_mask", tex)
-		if grass_terrain != null:
-			grass_terrain.apply_to_chunk_material(mat)
+
+		# 如果尚未烘焙，则执行一次烘焙
+		if chunk_data.baked_image == null and grass_terrain != null:
+			var baked_img = grass_terrain.bake_chunk_image(c, chunk_data.mask_image)
+			chunk_data.set_baked_image(baked_img)
+
+		var tex = chunk_data.get_or_create_baked_texture()
+		mat.set_shader_parameter("baked_chunk_texture", tex)
+		mat.set_shader_parameter("use_baked_texture", true)
 		mesh_inst.material_override = mat
 
 	return mesh_inst

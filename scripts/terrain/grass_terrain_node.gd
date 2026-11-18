@@ -341,3 +341,123 @@ func apply_to_chunk_material(mat: ShaderMaterial) -> void:
 	mat.set_shader_parameter("grass_irrational_rot", irrational_rot)
 	if _warp_tex != null:
 		mat.set_shader_parameter("grass_warp_noise_tex", _warp_tex)
+
+# =========================================================
+# 方案 B 核心: 提前烘焙 512x512 静态像素艺术贴图 (像广告牌贴在地面上)
+# 彻底摆脱 3D 运行时每帧计算噪波带来的亚像素边缘抖动，保证世界坐标无缝连通
+# =========================================================
+func bake_chunk_image(chunk_coord: Vector2i, mask: Image = null) -> Image:
+	var img = Image.create(512, 512, false, Image.FORMAT_RGBA8)
+	var byte_data = PackedByteArray()
+	byte_data.resize(512 * 512 * 4)
+
+	# 预先提取颜色分量 (0~255)
+	var bc_r = int(clamp(base_color.r, 0.0, 1.0) * 255.0)
+	var bc_g = int(clamp(base_color.g, 0.0, 1.0) * 255.0)
+	var bc_b = int(clamp(base_color.b, 0.0, 1.0) * 255.0)
+
+	var dc_r = int(clamp(dark_patch_color.r, 0.0, 1.0) * 255.0)
+	var dc_g = int(clamp(dark_patch_color.g, 0.0, 1.0) * 255.0)
+	var dc_b = int(clamp(dark_patch_color.b, 0.0, 1.0) * 255.0)
+
+	var lc_r = int(clamp(light_patch_color.r, 0.0, 1.0) * 255.0)
+	var lc_g = int(clamp(light_patch_color.g, 0.0, 1.0) * 255.0)
+	var lc_b = int(clamp(light_patch_color.b, 0.0, 1.0) * 255.0)
+
+	# 空地背景颜色 (暗色 32px 棋盘格)
+	var empty_base_r = int(0.12 * 255.0)
+	var empty_base_g = int(0.15 * 255.0)
+	var empty_base_b = int(0.18 * 255.0)
+	var empty_alt_r = int(0.14 * 255.0)
+	var empty_alt_g = int(0.17 * 255.0)
+	var empty_alt_b = int(0.20 * 255.0)
+
+	# 边框金黄色 (1 像素标示区块边界)
+	var border_r = int(0.9 * 255.0)
+	var border_g = int(0.75 * 255.0)
+	var border_b = int(0.2 * 255.0)
+
+	var cos_a = cos(irrational_rot)
+	var sin_a = sin(irrational_rot)
+	var zoom_factor = max(patch_zoom, 0.001)
+
+	var world_origin_x = float(chunk_coord.x * 512)
+	var world_origin_y = float(chunk_coord.y * 512)
+
+	var idx = 0
+	for ly in range(512):
+		for lx in range(512):
+			# 检查底片 R 通道 (地皮类型)
+			var tile_id = 1
+			if mask != null:
+				var m_col = mask.get_pixel(lx, ly)
+				tile_id = int(round(m_col.r * 255.0))
+
+			if tile_id == 0:
+				# 虚空/空地 (32 像素棋盘格)
+				var cx = (lx / 32) % 2
+				var cy = (ly / 32) % 2
+				var is_alt = (cx + cy) % 2 == 1
+				byte_data[idx] = empty_alt_r if is_alt else empty_base_r
+				byte_data[idx + 1] = empty_alt_g if is_alt else empty_base_g
+				byte_data[idx + 2] = empty_alt_b if is_alt else empty_base_b
+				byte_data[idx + 3] = 255
+			else:
+				# 草地 (ID = 1): 使用世界坐标无缝采样
+				var wx = world_origin_x + float(lx)
+				var wy = world_origin_y + float(ly)
+
+				# 1. 无理数自扰动场 (Domain Warp)
+				var coord_x = wx
+				var coord_y = wy
+				if enable_warp and warp_noise != null:
+					var warp_uv_x = coord_x / 512.0
+					var warp_uv_y = coord_y / 512.0
+					var sub_x = (cos_a * warp_uv_x - sin_a * warp_uv_y) * 1.6180339887
+					var sub_y = (sin_a * warp_uv_x + cos_a * warp_uv_y) * 1.6180339887
+					var nx = (warp_noise.get_noise_2d(warp_uv_x * 512.0, warp_uv_y * 512.0) + 1.0) * 0.5 * 2.0 - 1.0
+					var ny = (warp_noise.get_noise_2d(sub_x * 512.0, sub_y * 512.0) + 1.0) * 0.5 * 2.0 - 1.0
+					coord_x += nx * warp_strength
+					coord_y += ny * warp_strength
+
+				# 2. 图案等比缩放
+				var sx = coord_x / zoom_factor
+				var sy = coord_y / zoom_factor
+
+				# 3. 基础底色
+				var pr = bc_r
+				var pg = bc_g
+				var pb = bc_b
+
+				# 4. 深色斑块
+				if enable_dark_patch and dark_patch_noise != null:
+					var nd = (dark_patch_noise.get_noise_2d(sx, sy) + 1.0) * 0.5
+					if nd > dark_patch_threshold:
+						pr = dc_r
+						pg = dc_g
+						pb = dc_b
+
+				# 5. 浅色斑块 (叠加上层)
+				if enable_light_patch and light_patch_noise != null:
+					var nl = (light_patch_noise.get_noise_2d(sx, sy) + 1.0) * 0.5
+					if nl > light_patch_threshold:
+						pr = lc_r
+						pg = lc_g
+						pb = lc_b
+
+				byte_data[idx] = pr
+				byte_data[idx + 1] = pg
+				byte_data[idx + 2] = pb
+				byte_data[idx + 3] = 255
+
+			# 区块 1 像素外框
+			if lx == 0 or lx == 511 or ly == 0 or ly == 511:
+				byte_data[idx] = border_r
+				byte_data[idx + 1] = border_g
+				byte_data[idx + 2] = border_b
+				byte_data[idx + 3] = 255
+
+			idx += 4
+
+	img.set_data(512, 512, false, Image.FORMAT_RGBA8, byte_data)
+	return img
