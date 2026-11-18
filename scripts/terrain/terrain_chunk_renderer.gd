@@ -14,8 +14,15 @@ func _ready() -> void:
 	chunk_material_shader = preload("res://shaders/terrain_chunk_view.gdshader")
 
 	if grass_terrain == null:
-		grass_terrain = GrassTerrainNode.new()
-		add_child(grass_terrain)
+		grass_terrain = get_node_or_null("GrassTerrain")
+		if grass_terrain == null:
+			var grass_scn = load("res://scenes/terrain/grass_terrain.tscn")
+			if grass_scn != null:
+				grass_terrain = grass_scn.instantiate()
+				add_child(grass_terrain)
+			else:
+				grass_terrain = GrassTerrainNode.new()
+				add_child(grass_terrain)
 
 	if grass_terrain != null:
 		grass_terrain.properties_changed.connect(_on_grass_properties_changed)

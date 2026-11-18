@@ -3,6 +3,7 @@
 [ext_resource type="Script" uid="uid://o6jqff34w257" path="res://scripts/terrain/terrain_studio_controller.gd" id="1_dowhy"]
 [ext_resource type="Script" uid="uid://bkjptj14qivvo" path="res://scripts/terrain/grass_terrain_node.gd" id="2_6g125"]
 [ext_resource type="Shader" uid="uid://co1vw5dao1irk" path="res://shaders/grass_contour.gdshader" id="3_tdfat"]
+[ext_resource type="PackedScene" path="res://scenes/terrain/grass_terrain.tscn" id="4_grass"]
 
 [sub_resource type="FastNoiseLite" id="FastNoiseLite_tdfat"]
 seed = 1234
@@ -99,28 +100,7 @@ color = Color(0.07, 0.08, 0.1, 1)
 
 [node name="TerrainTypes" type="Node" parent="." unique_id=1023299970]
 
-[node name="GrassTerrain" type="Node" parent="TerrainTypes" unique_id=1165023469]
-script = ExtResource("2_6g125")
-patch_zoom = 0.6
-dark_patch_threshold = 0.32
-dark_patch_noise = SubResource("FastNoiseLite_tdfat")
-light_patch_threshold = 0.64
-light_patch_noise = SubResource("FastNoiseLite_acint")
-warp_strength = 17.0
-irrational_rot = 1.29
-warp_noise = SubResource("FastNoiseLite_6g125")
-base_noise = SubResource("FastNoiseLite_dowhy")
-noise_contrast = 1.0
-noise_offset = 0.09999999999999998
-color_band_0 = Color(0.12156863, 0.21960784, 0.14117648, 1)
-color_band_1 = Color(0.18039216, 0.38039216, 0.2, 1)
-color_band_2 = Color(0.3019608, 0.5803922, 0.25882354, 1)
-color_band_3 = Color(0.52156866, 0.78039217, 0.32156864, 1)
-color_band_4 = Color(0.72156864, 0.8784314, 0.4509804, 1)
-color_band_5 = Color(0.8784314, 0.9490196, 0.6, 1)
-isoline_color = Color(0.078431375, 0.14901961, 0.09019608, 1)
-terrain_id = 1
-terrain_name = "Grass (等高线草地)"
+[node name="GrassTerrain" parent="TerrainTypes" instance=ExtResource("4_grass")]
 
 [node name="CenterContainer" type="CenterContainer" parent="." unique_id=811609169]
 layout_mode = 0
