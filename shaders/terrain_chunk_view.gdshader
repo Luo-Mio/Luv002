@@ -1,11 +1,11 @@
 shader_type spatial;
-render_mode cull_disabled;
+render_mode cull_disabled, unshaded;
 
 // =========================================================
-// 方案 B 核心: 提前烘焙的 512x512 静态像素艺术底片贴图 (像广告牌一样贴在地面上)
-// 运行时零噪声计算，100% 纯正硬切像素色块，绝对稳固无抖动
+// 方案 B 核心: 提前烘焙的 512x256 静态像素艺术底片贴图 (像广告牌一样贴在地面上)
+// 100% 纯正硬切像素色块，unshaded 保证与 terrain_studio 预览调色 100% 完全一致
 // =========================================================
-uniform sampler2D baked_chunk_texture : filter_nearest;
+uniform sampler2D baked_chunk_texture : filter_nearest, source_color;
 uniform bool use_baked_texture = true;
 
 // 兼容备用通道

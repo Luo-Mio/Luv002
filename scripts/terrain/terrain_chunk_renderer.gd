@@ -16,13 +16,20 @@ func _ready() -> void:
 	if grass_terrain == null:
 		grass_terrain = get_node_or_null("GrassTerrain")
 		if grass_terrain == null:
-			var grass_scn = load("res://scenes/terrain/grass_terrain.tscn")
-			if grass_scn != null:
-				grass_terrain = grass_scn.instantiate()
-				add_child(grass_terrain)
-			else:
-				grass_terrain = GrassTerrainNode.new()
-				add_child(grass_terrain)
+			# 直接从 terrain_studio.tscn 读取用户在工作室中调参保存的真实地皮配置！
+			var studio_scn = load("res://scenes/terrain_studio.tscn")
+			if studio_scn != null:
+				var studio_inst = studio_scn.instantiate()
+				var gt = studio_inst.get_node_or_null("TerrainTypes/GrassTerrain")
+				if gt != null:
+					studio_inst.get_node("TerrainTypes").remove_child(gt)
+					gt.owner = null
+					grass_terrain = gt
+					add_child(grass_terrain)
+					studio_inst.queue_free()
+		if grass_terrain == null:
+			grass_terrain = GrassTerrainNode.new()
+			add_child(grass_terrain)
 
 	if grass_terrain != null:
 		grass_terrain.properties_changed.connect(_on_grass_properties_changed)
