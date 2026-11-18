@@ -56,21 +56,21 @@ region = Rect2(96, 96, 48, 32)
 atlas = ExtResource("2_pck86")
 region = Rect2(144, 96, 48, 32)
 
+[sub_resource type="AtlasTexture" id="AtlasTexture_n27i1"]
+atlas = ExtResource("2_pck86")
+region = Rect2(0, 0, 48, 32)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_pck86"]
+atlas = ExtResource("2_pck86")
+region = Rect2(48, 0, 48, 32)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_m3qrd"]
+atlas = ExtResource("2_pck86")
+region = Rect2(96, 0, 48, 32)
+
 [sub_resource type="AtlasTexture" id="AtlasTexture_d1wu8"]
 atlas = ExtResource("2_pck86")
-region = Rect2(0, 32, 48, 32)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_3ak00"]
-atlas = ExtResource("2_pck86")
-region = Rect2(48, 32, 48, 32)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_axmiu"]
-atlas = ExtResource("2_pck86")
-region = Rect2(96, 32, 48, 32)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_r844l"]
-atlas = ExtResource("2_pck86")
-region = Rect2(144, 32, 48, 32)
+region = Rect2(144, 0, 48, 32)
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_bw1vi"]
 atlas = ExtResource("3_m3qrd")
@@ -191,16 +191,16 @@ animations = [{
 }, {
 "frames": [{
 "duration": 1.0,
+"texture": SubResource("AtlasTexture_n27i1")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_pck86")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_m3qrd")
+}, {
+"duration": 1.0,
 "texture": SubResource("AtlasTexture_d1wu8")
-}, {
-"duration": 1.0,
-"texture": SubResource("AtlasTexture_3ak00")
-}, {
-"duration": 1.0,
-"texture": SubResource("AtlasTexture_axmiu")
-}, {
-"duration": 1.0,
-"texture": SubResource("AtlasTexture_r844l")
 }],
 "loop": 1,
 "name": &"idel_empty_up",
@@ -283,11 +283,11 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 10, 0)
 shape = SubResource("CapsuleShape3D_1")
 
 [node name="AnimatedSprite3D" type="AnimatedSprite3D" parent="." unique_id=1551983538]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 16, 0)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 16.5, 0)
 pixel_size = 1.0
-billboard = 2
+billboard = 1
+render_priority = 1
 alpha_cut = 1
 texture_filter = 0
 sprite_frames = SubResource("SpriteFrames_1")
-animation = &"idel_empty_down"
-frame_progress = 0.09203148
+animation = &"idel_empty_up"

@@ -2,7 +2,7 @@ class_name IsometricCamera
 extends Camera3D
 
 @export var target: Node3D
-@export var smooth_follow: bool = true
+@export var smooth_follow: bool = false # 默认硬锁定模式(像2D像素游戏一样零延迟)，角色停相机瞬停，消除停步后的微小像素蠕动
 @export var follow_speed: float = 14.0
 @export var distance: float = 800.0
 
