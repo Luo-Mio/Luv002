@@ -33,9 +33,7 @@ void vertex() {
 }
 
 vec3 evaluate_grass(vec2 world_xz) {
-	// 关键核心：将连续世界坐标严格量化到 1x1 的离散世界像素网格中心
-	// 相当于在世界空间提前渲染/固定为离散像素，彻底消除数学光滑曲线在屏幕采样时的边缘抖动！
-	vec2 coord = floor(world_xz) + 0.5;
+	vec2 coord = world_xz;
 
 	// 1. 无理数自扰动场 (Domain Warp)
 	if (grass_enable_warp) {
@@ -55,20 +53,20 @@ vec3 evaluate_grass(vec2 world_xz) {
 
 	vec4 col = grass_base_color;
 
-	// 3. 深色斑块 (Dark Patch)
+	// 3. 深色斑块 (采用屏幕空间导数 fwidth 进行 1 像素级极窄抗锯齿，彻底消除相机平移时的抖动爬行)
 	if (grass_enable_dark_patch) {
 		float n_dark = texture(grass_dark_noise_tex, sample_coord).r;
-		if (n_dark > grass_dark_threshold) {
-			col = grass_dark_patch_color;
-		}
+		float w_dark = max(fwidth(n_dark) * 0.75, 0.0001);
+		float m_dark = smoothstep(grass_dark_threshold - w_dark, grass_dark_threshold + w_dark, n_dark);
+		col = mix(col, grass_dark_patch_color, m_dark);
 	}
 
-	// 4. 浅色斑块 (Light Patch)
+	// 4. 浅色斑块 (同理采用 1 像素平滑过滤)
 	if (grass_enable_light_patch) {
 		float n_light = texture(grass_light_noise_tex, sample_coord).r;
-		if (n_light > grass_light_threshold) {
-			col = grass_light_patch_color;
-		}
+		float w_light = max(fwidth(n_light) * 0.75, 0.0001);
+		float m_light = smoothstep(grass_light_threshold - w_light, grass_light_threshold + w_light, n_light);
+		col = mix(col, grass_light_patch_color, m_light);
 	}
 
 	return col.rgb;
