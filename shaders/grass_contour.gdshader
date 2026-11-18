@@ -53,7 +53,8 @@ uniform vec4 isoline_color : source_color = vec4(0.07, 0.13, 0.08, 1.0);
 uniform vec2 world_offset = vec2(0.0, 0.0);
 
 void fragment() {
-	vec2 pixel_coord = UV * 512.0 + world_offset;
+	// 严格对齐到 512x512 离散像素格中心，保证预览时也是真正的固定像素渲染
+	vec2 pixel_coord = floor(UV * 512.0 + world_offset) + 0.5;
 
 	// 1. 无理数自扰动场 (Domain Warp)
 	vec2 warped_coord = pixel_coord;
@@ -80,20 +81,20 @@ void fragment() {
 		// =========================================================
 		final_color = base_color;
 
-		// 采样深色斑块遮罩 (采用 1 像素屏幕导数 fwidth 抗锯齿平滑，消除移动爬行走样)
+		// 采样深色斑块遮罩
 		if (enable_dark_patch) {
 			float n_dark = texture(dark_patch_noise_tex, sample_coord).r;
-			float w_dark = max(fwidth(n_dark) * 0.75, 0.0001);
-			float m_dark = smoothstep(dark_patch_threshold - w_dark, dark_patch_threshold + w_dark, n_dark);
-			final_color = mix(final_color, dark_patch_color, m_dark);
+			if (n_dark > dark_patch_threshold) {
+				final_color = dark_patch_color;
+			}
 		}
 
 		// 采样浅色斑块遮罩 (叠加上层)
 		if (enable_light_patch) {
 			float n_light = texture(light_patch_noise_tex, sample_coord).r;
-			float w_light = max(fwidth(n_light) * 0.75, 0.0001);
-			float m_light = smoothstep(light_patch_threshold - w_light, light_patch_threshold + w_light, n_light);
-			final_color = mix(final_color, light_patch_color, m_light);
+			if (n_light > light_patch_threshold) {
+				final_color = light_patch_color;
+			}
 		}
 	} else {
 		// =========================================================
