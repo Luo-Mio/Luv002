@@ -2,7 +2,8 @@ class_name IsometricCamera
 extends Camera3D
 
 @export var target: Node3D
-@export var follow_speed: float = 12.0
+@export var smooth_follow: bool = true
+@export var follow_speed: float = 14.0
 @export var distance: float = 800.0
 
 # Strict 2:1 Top-Down View:
@@ -14,6 +15,8 @@ const YAW_DEG: float = 0.0
 # 960x540 viewport height
 const VIEWPORT_HEIGHT: float = 540.0
 
+var _offset: Vector3 = Vector3.ZERO
+
 func _ready() -> void:
 	projection = Camera3D.PROJECTION_ORTHOGONAL
 	# 1 world unit = 1 game pixel (540 units visible vertically)
@@ -23,19 +26,35 @@ func _ready() -> void:
 
 	rotation_degrees = Vector3(PITCH_DEG, YAW_DEG, 0.0)
 
+	var rot_basis = Basis.from_euler(Vector3(deg_to_rad(PITCH_DEG), deg_to_rad(YAW_DEG), 0.0))
+	_offset = rot_basis * Vector3(0.0, 0.0, distance)
+
 	if target == null:
 		target = get_tree().get_first_node_in_group("player")
 
 	if target != null:
 		global_position = _calculate_desired_position()
+		reset_physics_interpolation()
 
 func _calculate_desired_position() -> Vector3:
-	var rot_basis = Basis.from_euler(Vector3(deg_to_rad(PITCH_DEG), deg_to_rad(YAW_DEG), 0.0))
-	var offset = rot_basis * Vector3(0.0, 0.0, distance)
-	return target.global_position + offset
+	var target_pos = target.global_position
+	# 当目标支持物理插值时，在渲染帧获取平滑插值后的目标真实渲染坐标，消灭 60Hz 顿挫感
+	if target.has_method("get_global_transform_interpolated"):
+		target_pos = target.get_global_transform_interpolated().origin
+	return target_pos + _offset
 
-func _physics_process(delta: float) -> void:
-	if target != null:
-		var desired = _calculate_desired_position()
-		# 平滑插值跟踪目标，保持对角线运动时 X 轴与 Z 轴严格同步，消除阶梯式交替抖动
-		global_position = global_position.lerp(desired, follow_speed * delta)
+# 改在 _process (渲染帧) 更新：
+# 配合物理插值，使相机在 60Hz/144Hz/165Hz 高刷显示器上的每一帧渲染中都丝滑平移，
+# 彻底消除因物理时钟(60Hz)与渲染帧不同步导致的画面/地皮跳帧抖动！
+func _process(delta: float) -> void:
+	if target == null:
+		return
+
+	var desired = _calculate_desired_position()
+	if smooth_follow:
+		# 严格与帧率无关的指数阻尼平滑跟踪 (Exponential Smoothing)
+		var t = 1.0 - exp(-follow_speed * delta)
+		global_position = global_position.lerp(desired, t)
+	else:
+		# 硬锁定模式 (零延迟跟踪，传统 2D 像素游戏模式)
+		global_position = desired
