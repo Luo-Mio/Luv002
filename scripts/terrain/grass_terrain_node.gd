@@ -343,13 +343,16 @@ func apply_to_chunk_material(mat: ShaderMaterial) -> void:
 		mat.set_shader_parameter("grass_warp_noise_tex", _warp_tex)
 
 # =========================================================
-# 方案 B 核心: 提前烘焙 512x512 静态像素艺术贴图 (像广告牌贴在地面上)
-# 彻底摆脱 3D 运行时每帧计算噪波带来的亚像素边缘抖动，保证世界坐标无缝连通
+# 方案 B 核心: 提前烘焙 512x256 静态像素艺术贴图 (像广告牌贴在地面上)
+# 彻底消除每帧计算带来的亚像素边缘抖动，点对点精准匹配 2:1 投影的屏幕像素！
 # =========================================================
+const BAKE_WIDTH: int = 512
+const BAKE_HEIGHT: int = 256 # 512x256: 完美点对点契合 2:1 俯视正交投影的 512x256 屏幕像素！
+
 func bake_chunk_image(chunk_coord: Vector2i, mask: Image = null) -> Image:
-	var img = Image.create(512, 512, false, Image.FORMAT_RGBA8)
+	var img = Image.create(BAKE_WIDTH, BAKE_HEIGHT, false, Image.FORMAT_RGBA8)
 	var byte_data = PackedByteArray()
-	byte_data.resize(512 * 512 * 4)
+	byte_data.resize(BAKE_WIDTH * BAKE_HEIGHT * 4)
 
 	# 预先提取颜色分量 (0~255)
 	var bc_r = int(clamp(base_color.r, 0.0, 1.0) * 255.0)
@@ -364,7 +367,7 @@ func bake_chunk_image(chunk_coord: Vector2i, mask: Image = null) -> Image:
 	var lc_g = int(clamp(light_patch_color.g, 0.0, 1.0) * 255.0)
 	var lc_b = int(clamp(light_patch_color.b, 0.0, 1.0) * 255.0)
 
-	# 空地背景颜色 (暗色 32px 棋盘格)
+	# 空地背景颜色 (暗色 32x16 棋盘格，投影后为 32x32 世界单位)
 	var empty_base_r = int(0.12 * 255.0)
 	var empty_base_g = int(0.15 * 255.0)
 	var empty_base_b = int(0.18 * 255.0)
@@ -385,18 +388,22 @@ func bake_chunk_image(chunk_coord: Vector2i, mask: Image = null) -> Image:
 	var world_origin_y = float(chunk_coord.y * 512)
 
 	var idx = 0
-	for ly in range(512):
-		for lx in range(512):
+	for ly in range(BAKE_HEIGHT):
+		# 256 行精准对应地面深度 512 世界单位 (每行跨度 2.0)
+		var mask_y = ly * 2
+		var wy = world_origin_y + float(mask_y)
+
+		for lx in range(BAKE_WIDTH):
 			# 检查底片 R 通道 (地皮类型)
 			var tile_id = 1
 			if mask != null:
-				var m_col = mask.get_pixel(lx, ly)
+				var m_col = mask.get_pixel(lx, mask_y)
 				tile_id = int(round(m_col.r * 255.0))
 
 			if tile_id == 0:
-				# 虚空/空地 (32 像素棋盘格)
+				# 虚空/空地 (32x16 棋盘格)
 				var cx = (lx / 32) % 2
-				var cy = (ly / 32) % 2
+				var cy = (ly / 16) % 2
 				var is_alt = (cx + cy) % 2 == 1
 				byte_data[idx] = empty_alt_r if is_alt else empty_base_r
 				byte_data[idx + 1] = empty_alt_g if is_alt else empty_base_g
@@ -405,7 +412,6 @@ func bake_chunk_image(chunk_coord: Vector2i, mask: Image = null) -> Image:
 			else:
 				# 草地 (ID = 1): 使用世界坐标无缝采样
 				var wx = world_origin_x + float(lx)
-				var wy = world_origin_y + float(ly)
 
 				# 1. 无理数自扰动场 (Domain Warp)
 				var coord_x = wx
@@ -451,7 +457,7 @@ func bake_chunk_image(chunk_coord: Vector2i, mask: Image = null) -> Image:
 				byte_data[idx + 3] = 255
 
 			# 区块 1 像素外框
-			if lx == 0 or lx == 511 or ly == 0 or ly == 511:
+			if lx == 0 or lx == (BAKE_WIDTH - 1) or ly == 0 or ly == (BAKE_HEIGHT - 1):
 				byte_data[idx] = border_r
 				byte_data[idx + 1] = border_g
 				byte_data[idx + 2] = border_b
@@ -459,5 +465,5 @@ func bake_chunk_image(chunk_coord: Vector2i, mask: Image = null) -> Image:
 
 			idx += 4
 
-	img.set_data(512, 512, false, Image.FORMAT_RGBA8, byte_data)
+	img.set_data(BAKE_WIDTH, BAKE_HEIGHT, false, Image.FORMAT_RGBA8, byte_data)
 	return img
